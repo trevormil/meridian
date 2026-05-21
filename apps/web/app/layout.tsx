@@ -5,6 +5,7 @@ import { ConnectButton } from '@/components/wallet/ConnectButton';
 import { RealtimeWarmup } from '@/components/RealtimeWarmup';
 import { ToastProvider } from '@/components/ui/Toasts';
 import { OrderFillWatcher } from '@/components/OrderFillWatcher';
+import { BrandLogo } from '@/components/BrandLogo';
 
 export const metadata = {
   title: 'Meridian · powered by BitBadges',
@@ -15,7 +16,6 @@ export const metadata = {
   },
 };
 
-const MERIDIAN_LOGO = 'https://cdn.midjourney.com/adeb0718-a461-4a25-9bc5-188d0bc644bb/0_0.png';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -28,27 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <header className="sticky top-0 z-40 border-b border-border bg-bg/80 backdrop-blur-md">
             <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5">
               <div className="flex items-center gap-8">
-                <Link href="/" className="flex items-center gap-2 text-base font-bold">
-                  <span className="relative inline-flex h-7 w-7 items-center justify-center overflow-hidden rounded-md bg-gradient-to-br from-accent to-blue-600 text-sm font-bold text-white">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={MERIDIAN_LOGO}
-                      alt="Meridian"
-                      width={28}
-                      height={28}
-                      className="absolute inset-0 h-full w-full object-cover"
-                      onError={(e) => {
-                        // Cloudflare on the Midjourney CDN may block non-browser
-                        // hits; fall back to the gradient + monogram if so.
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                    <span className="relative">M</span>
-                  </span>
-                  <span>
-                    Meridian<span className="text-muted font-normal"> · powered by BitBadges</span>
-                  </span>
-                </Link>
+                <BrandLogo />
                 <nav className="hidden items-center gap-1 text-sm text-muted sm:flex">
                   <NavLink href="/">Browse</NavLink>
                   <NavLink href="/create">Create</NavLink>

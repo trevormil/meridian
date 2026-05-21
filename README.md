@@ -1,9 +1,14 @@
-# BitBadges Prediction Markets
+# Meridian — Binary Stock Outcome Markets
 
-A standalone prediction-markets product on the BitBadges chain. Zero runtime
-dependency on `bitbadges-indexer` or `bitbadges-frontend` — uses the BitBadges
-SDK for chain interaction, ships a thin aggregator for the bits the chain
-doesn't index, and renders its own UI.
+> Meridian is a non-custodial, decentralized prediction-market app implementing
+> the Gauntlet AI **Meridian** project spec. Daily 0DTE markets on MAG7 stock
+> closing prices, with on-chain order book, oracle-driven settlement, and a
+> $1 USDC binary payout invariant. Powered by the BitBadges chain.
+
+This repo is also reusable as a generic prediction-markets product (the
+underlying chain primitives + aggregator + FE are not Meridian-specific —
+the daily lifecycle scripts under `apps/aggregator/src/meridian/` are the
+Meridian-specific layer on top).
 
 ## What's here
 
