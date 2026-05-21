@@ -24,6 +24,89 @@ interface Position {
   no: bigint;
 }
 
+/**
+ * One row in the portfolio "Open orders" list. Translates the raw intent
+ * (pay/receive denoms + amounts) into the user-facing exchange grammar:
+ *
+ *   BUY  10 YES @ 80¢   ← user spent 8.00 USDC to receive 10 YES tokens
+ *   SELL  5 NO  @ 55¢   ← user gave 5 NO tokens to receive 2.75 USDC
+ *
+ * Never displays the raw `8000000` base units or the long `ibc/F08...` denom
+ * string — those leak the chain's encoding and aren't readable.
+ */
+function OpenOrderRow({ intent: i }: { intent: IntentDto }) {
+  const payIsTok = (i.payDenom ?? '').startsWith('badgeslp:');
+  const tokenDenom = payIsTok ? i.payDenom : i.receiveDenom;
+  const tokenAmtRaw = BigInt((payIsTok ? i.payAmount : i.receiveAmount) ?? '0');
+  const coinAmtRaw = BigInt((payIsTok ? i.receiveAmount : i.payAmount) ?? '0');
+  const side: 'yes' | 'no' | 'unknown' = tokenDenom?.endsWith(':uyes')
+    ? 'yes'
+    : tokenDenom?.endsWith(':uno')
+      ? 'no'
+      : 'unknown';
+  const tokens = formatBaseUnits(tokenAmtRaw, env.usdcDecimals);
+  const usdc = formatBaseUnits(coinAmtRaw, env.usdcDecimals);
+  // Implied price per token in cents (rounded). incoming approval = user buying tokens,
+  // outgoing = user selling tokens — semantics differ but price-per-token math is the same.
+  const pricePct =
+    tokenAmtRaw > 0n
+      ? ((Number(coinAmtRaw) / Number(tokenAmtRaw)) * 100).toFixed(0)
+      : '—';
+  const direction = i.approvalLevel === 'incoming' ? 'BUY' : 'SELL';
+  return (
+    <li>
+      <Link
+        href={`/markets/${i.collectionId}`}
+        className="flex items-center justify-between gap-3 rounded-lg border border-border bg-bg/40 px-3 py-2 text-sm transition-colors hover:border-border-hi"
+      >
+        <span className="flex items-center gap-2">
+          <span
+            className={
+              direction === 'BUY'
+                ? 'rounded border border-yes/40 bg-yes/10 px-1.5 py-0.5 text-[10px] font-semibold text-yes'
+                : 'rounded border border-no/40 bg-no/10 px-1.5 py-0.5 text-[10px] font-semibold text-no'
+            }
+          >
+            {direction}
+          </span>
+          <span className="font-mono text-ink">{tokens}</span>
+          <span
+            className={
+              side === 'yes'
+                ? 'rounded border border-yes/40 bg-yes/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-yes'
+                : side === 'no'
+                  ? 'rounded border border-no/40 bg-no/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-no'
+                  : 'text-muted'
+            }
+          >
+            {side === 'unknown' ? '—' : side.toUpperCase()}
+          </span>
+          <span className="text-muted">@</span>
+          <span className="font-mono text-ink">{pricePct}¢</span>
+          <span className="text-muted">·</span>
+          <span className="font-mono text-muted">{usdc}</span>
+          <UsdcSymbol size="xs" className="text-muted" />
+        </span>
+        <span
+          className={`text-xs ${i.used ? 'text-muted' : i.isExpired ? 'text-no' : 'text-yes'}`}
+        >
+          {i.used ? 'Filled' : i.isExpired ? 'Expired' : i.isPending ? 'Pending' : 'Active'}
+        </span>
+      </Link>
+    </li>
+  );
+}
+
+function formatBaseUnits(raw: bigint, decimals: number): string {
+  if (raw === 0n) return '0';
+  const div = BigInt(10) ** BigInt(decimals);
+  const whole = raw / div;
+  const frac = raw % div;
+  if (frac === 0n) return whole.toString();
+  const fracStr = frac.toString().padStart(decimals, '0').replace(/0+$/, '').slice(0, 2);
+  return fracStr ? `${whole}.${fracStr}` : whole.toString();
+}
+
 export default function PortfolioPage() {
   const { address, connect } = useWallet();
   const [positions, setPositions] = useState<Position[]>([]);
@@ -146,29 +229,7 @@ export default function PortfolioPage() {
         {intents.length > 0 && (
           <ul className="space-y-2">
             {intents.map((i) => (
-              <li key={`${i.collectionId}:${i.approvalLevel}:${i.approvalId}`}>
-                <Link
-                  href={`/markets/${i.collectionId}`}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-border bg-bg/40 px-3 py-2 text-sm transition-colors hover:border-border-hi"
-                >
-                  <span className="flex items-center gap-2">
-                    <span
-                      className={
-                        i.approvalLevel === 'incoming'
-                          ? 'rounded border border-yes/40 bg-yes/10 px-1.5 py-0.5 text-[10px] font-semibold text-yes'
-                          : 'rounded border border-no/40 bg-no/10 px-1.5 py-0.5 text-[10px] font-semibold text-no'
-                      }
-                    >
-                      {i.approvalLevel === 'incoming' ? 'BUY' : 'SELL'}
-                    </span>
-                    <span className="font-mono">{i.payAmount}</span>
-                    <span className="text-muted">{i.payDenom?.slice(0, 16)}…</span>
-                  </span>
-                  <span className={`text-xs ${i.used ? 'text-muted' : i.isExpired ? 'text-no' : 'text-yes'}`}>
-                    {i.used ? 'Filled' : i.isExpired ? 'Expired' : i.isPending ? 'Pending' : 'Active'}
-                  </span>
-                </Link>
-              </li>
+              <OpenOrderRow key={`${i.collectionId}:${i.approvalLevel}:${i.approvalId}`} intent={i} />
             ))}
           </ul>
         )}

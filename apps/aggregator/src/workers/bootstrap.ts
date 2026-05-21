@@ -75,10 +75,21 @@ export function startBootstrapLoop(): NodeJS.Timer {
  * bootstrap-index boundary, which keeps the indexed `markets` table clean.
  */
 function isHiddenTestMarket(c: any): boolean {
-  // Find the latest metadata entry. Markets store name + description there.
-  const md = c?.collectionMetadataTimeline?.[0]?.collectionMetadata;
-  const name: string = md?.name ?? '';
-  const description: string = md?.description ?? '';
+  // Name + description live in the parsed JSON inside `collectionMetadata.customData`
+  // (the same field extractSummary unpacks). collectionMetadataTimeline is NOT
+  // populated on the LCD response — that was the earlier bug.
+  let name = '';
+  let description = '';
+  try {
+    const raw = c?.collectionMetadata?.customData;
+    if (raw) {
+      const meta = JSON.parse(raw);
+      name = String(meta?.name ?? '');
+      description = String(meta?.description ?? '');
+    }
+  } catch {
+    // unparseable customData — fall through to the false return below
+  }
   if (name.startsWith('[E2E]') || name.startsWith('[TEST]')) return true;
   if (/\b209[0-9]-\d{2}-\d{2}\b/.test(description)) return true;
   return false;

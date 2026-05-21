@@ -124,6 +124,23 @@ faucet.post('/faucet/claim', async (c) => {
     if (!result.success) {
       return c.json({ error: 'broadcast_failed', detail: result.error ?? `code ${result.code}` }, 500);
     }
+
+    // Wait for DeliverTx to confirm the send actually executed. Returning on
+    // mempool-accept alone lets the FE refresh balances before the chain has
+    // posted the bank transfer, which made the faucet card flash old numbers.
+    const commit = await waitForCommit(result.txHash);
+    if (!commit) {
+      return c.json(
+        { error: 'tx_pending', detail: `tx ${result.txHash.slice(0, 12)}… not committed within 12s`, txHash: result.txHash },
+        504,
+      );
+    }
+    if (commit.code !== 0) {
+      return c.json(
+        { error: 'tx_reverted', code: commit.code, detail: commit.rawLog.slice(0, 300), txHash: result.txHash },
+        500,
+      );
+    }
     return c.json({
       ok: true,
       txHash: result.txHash,
@@ -135,3 +152,24 @@ faucet.post('/faucet/claim', async (c) => {
     return c.json({ error: 'sign_failed', detail: (e as Error).message }, 500);
   }
 });
+
+async function waitForCommit(
+  txHash: string,
+  timeoutMs = 12_000,
+): Promise<{ code: number; rawLog: string } | null> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const r = await fetch(`${env.lcdUrl}/cosmos/tx/v1beta1/txs/${txHash}`);
+      if (r.ok) {
+        const j = (await r.json()) as { tx_response?: { code?: number; raw_log?: string } };
+        const tx = j.tx_response;
+        if (tx?.code !== undefined) return { code: Number(tx.code), rawLog: tx.raw_log ?? '' };
+      }
+    } catch {
+      // transient — keep polling
+    }
+    await new Promise((res) => setTimeout(res, 400));
+  }
+  return null;
+}
