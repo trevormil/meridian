@@ -63,7 +63,34 @@ export interface PriceQuote {
 
 const STALENESS_LIMIT_HOURS = 26; // accept up to ~1 day stale for prev-close
 
+/**
+ * Test/dev escape hatch: when `MERIDIAN_PRICE_OVERRIDE` is set to a JSON map
+ * of {SYMBOL: {close, previousClose}}, return THOSE values instead of going
+ * to Yahoo. Lets the e2e suite drive deterministic outcomes without
+ * mocking the network. Production cron leaves the env unset.
+ */
+function priceOverride(symbol: Ticker): PriceQuote | null {
+  const raw = process.env.MERIDIAN_PRICE_OVERRIDE;
+  if (!raw) return null;
+  try {
+    const map = JSON.parse(raw) as Record<string, { close: number; previousClose: number; isClosed?: boolean }>;
+    const entry = map[symbol];
+    if (!entry) return null;
+    return {
+      symbol,
+      close: entry.close,
+      previousClose: entry.previousClose,
+      timestamp: Math.floor(Date.now() / 1000),
+      isClosed: entry.isClosed ?? true,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchPriceQuote(symbol: Ticker): Promise<PriceQuote> {
+  const override = priceOverride(symbol);
+  if (override) return override;
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=10d`;
   const r = await fetch(url, { headers: HEADERS });
   if (!r.ok) throw new Error(`Yahoo ${symbol}: HTTP ${r.status}`);

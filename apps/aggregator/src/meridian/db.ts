@@ -96,9 +96,12 @@ export function markSettled(row: {
     .run(row.outcome, row.settlementPrice, Date.now(), row.collectionId);
 }
 
-/** Returns 'YYYY-MM-DD' for the US/Eastern calendar day of `at` (default now). */
+/** Returns 'YYYY-MM-DD' for the US/Eastern calendar day of `at` (default now).
+ *  Tests can pin a specific date via the MERIDIAN_CLOSE_DATE env var so they
+ *  don't collide with the real day's markets. */
 export function easternTradingDay(at: Date = new Date()): string {
-  // Use Intl with America/New_York to handle DST automatically.
+  const override = process.env.MERIDIAN_CLOSE_DATE;
+  if (override && /^\d{4}-\d{2}-\d{2}$/.test(override)) return override;
   const fmt = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/New_York',
     year: 'numeric',

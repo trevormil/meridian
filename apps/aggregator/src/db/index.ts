@@ -12,6 +12,10 @@ export function getDb(): Database {
   _db = new Database(env.dbPath);
   _db.exec('PRAGMA journal_mode = WAL');
   _db.exec('PRAGMA foreign_keys = ON');
+  // 10s busy_timeout — when two processes touch the same DB (e.g. the dev
+  // aggregator + an ad-hoc `meridian:morning` script during e2e tests), the
+  // contender waits instead of immediately erroring with "database is locked".
+  _db.exec('PRAGMA busy_timeout = 10000');
   migrate(_db);
   // Clean up rows that landed before the camelCase fix — they have
   // collection_id='undefined' from String(undefined) in extractSummary.
