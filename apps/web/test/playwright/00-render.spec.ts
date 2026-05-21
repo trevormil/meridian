@@ -8,9 +8,10 @@ import { test, expect } from './fixtures';
 
 test('home: browse renders', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: /Prediction markets/i })).toBeVisible();
+  // Browse hero heading: "Markets" in Fraunces serif (post-Meridian rebrand).
+  await expect(page.getByRole('heading', { name: /^Markets$/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /Refresh/i })).toBeVisible();
-  await expect(page.getByRole('link', { name: /\+ New market/i })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Create market/i })).toBeVisible();
 });
 
 test('create: form fields render', async ({ page }) => {
@@ -25,9 +26,10 @@ test('create: form fields render', async ({ page }) => {
 test('portfolio: connect prompt when disconnected', async ({ page }) => {
   await page.goto('/portfolio');
   await expect(page.getByText(/Connect a wallet/i)).toBeVisible();
-  // Two "Connect" buttons render (header + inline empty-state) — assert at
-  // least one exists by counting rather than fighting strict-mode.
-  const buttons = page.getByRole('button', { name: /Connect Keplr|Connect \(test\)/i });
+  // Header + inline empty-state both render a connect CTA. We match either
+  // the unified "Connect wallet" CTA OR the TEST_MODE "Connect (test)"
+  // variant depending on which mode the suite is running in.
+  const buttons = page.getByRole('button', { name: /Connect wallet|Connect \(test\)/i });
   expect(await buttons.count()).toBeGreaterThanOrEqual(1);
 });
 

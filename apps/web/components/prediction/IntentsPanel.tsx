@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useWallet } from '@/contexts/WalletContext';
+import { useRefreshOnTx } from '@/lib/tx-bus';
+import { getMarketBalances } from '@/lib/prediction-market/balances';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -99,6 +101,19 @@ function NewIntentForm({ market, onSuccess }: { market: MarketDto; onSuccess: ()
   /** Custom-entered implied probability percent (0–100). Only used when customMode is on. */
   const [customPricePct, setCustomPricePct] = useState('50');
   const [expirySec, setExpirySec] = useState(EXPIRY_PRESETS[2].seconds);
+  const [balances, setBalances] = useState<{ yes: bigint; no: bigint; usdc: bigint } | null>(null);
+
+  // Pull live USDC + YES/NO balances. Auto-refresh on every tx confirm so
+  // the "Max" button reflects post-trade state without a manual reload.
+  useRefreshOnTx(() => {
+    if (!address) {
+      setBalances(null);
+      return;
+    }
+    getMarketBalances(address, market.collectionId, market.depositDenom ?? env.usdcDenom)
+      .then(setBalances)
+      .catch(() => setBalances({ yes: 0n, no: 0n, usdc: 0n }));
+  }, [address, market.collectionId, market.depositDenom]);
 
   // Live market price (% form). Defaults to this unless user opts into custom.
   const marketPct = ((side === 'yes' ? market.yesPrice : market.noPrice) * 100).toFixed(1);
@@ -108,6 +123,17 @@ function NewIntentForm({ market, onSuccess }: { market: MarketDto; onSuccess: ()
   const priceNum = Math.max(0, Math.min(100, Number(pricePct)));
   const decimalPrice = priceNum / 100;
   const coinAmt = toMicroUsdc((Number(tokenAmount) * decimalPrice).toString());
+
+  // Sell-side max = YES or NO balance the user holds (whole tokens). Buy-side
+  // intentionally has no balance display — a posted buy intent doesn't move
+  // USDC until someone fills it, so "current cash" isn't load-bearing on the
+  // Quantity field. The Preview row below shows the implied USDC cost.
+  const decimals = env.usdcDecimals;
+  const sideBalanceBase = side === 'yes' ? balances?.yes ?? 0n : balances?.no ?? 0n;
+  const sideBalanceUnits = Number(sideBalanceBase) / 10 ** decimals;
+  const insufficient =
+    direction === 'sell' && Number(tokenAmount || '0') > sideBalanceUnits + 1e-9;
+  const showSellMax = direction === 'sell' && address !== null && balances !== null;
 
   return (
     <Card>
@@ -124,10 +150,32 @@ function NewIntentForm({ market, onSuccess }: { market: MarketDto; onSuccess: ()
           <SegBtn label="NO" active={side === 'no'} variant="no" onClick={() => setSide('no')} />
         </div>
 
-        <label className="block text-xs text-muted">
-          Quantity
+        <div>
+          <div className="mb-1 flex items-end justify-between text-xs">
+            <span className="text-muted">Quantity</span>
+            {showSellMax && (
+              <span className="flex items-center gap-2 font-mono text-[10px] text-faint">
+                <span>
+                  Your {side.toUpperCase()}: {trimNum(sideBalanceUnits)}
+                </span>
+                <button
+                  type="button"
+                  disabled={sideBalanceUnits <= 0}
+                  onClick={() => setTokenAmount(trimNum(sideBalanceUnits))}
+                  className="rounded-sm border border-border bg-bg-deep px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-gold transition-colors hover:border-gold/50 hover:text-gold-bright disabled:opacity-30 disabled:hover:border-border"
+                >
+                  Max
+                </button>
+              </span>
+            )}
+          </div>
           <Input value={tokenAmount} onChange={(e) => setTokenAmount(e.target.value)} type="number" min="0" />
-        </label>
+          {insufficient && (
+            <p className="mt-1 text-[10px] text-no-bright">
+              Insufficient {side.toUpperCase()} balance
+            </p>
+          )}
+        </div>
 
         <div>
           <div className="mb-1 flex items-center justify-between text-xs text-muted">
@@ -214,7 +262,7 @@ function NewIntentForm({ market, onSuccess }: { market: MarketDto; onSuccess: ()
           fullWidth
           label={`${direction === 'buy' ? 'Buy' : 'Sell'} ${tokenAmount || '0'} ${side.toUpperCase()}`}
           variant={side === 'yes' ? 'yes' : 'no'}
-          disabled={!address || tokenAmt === 0n || coinAmt === 0n}
+          disabled={!address || tokenAmt === 0n || coinAmt === 0n || insufficient}
           build={() => {
             if (!address) return [];
             return [
@@ -235,6 +283,12 @@ function NewIntentForm({ market, onSuccess }: { market: MarketDto; onSuccess: ()
       </div>
     </Card>
   );
+}
+
+function trimNum(n: number): string {
+  if (n === 0) return '0';
+  if (Number.isInteger(n)) return n.toString();
+  return n.toFixed(2).replace(/\.?0+$/, '');
 }
 
 function SegBtn({

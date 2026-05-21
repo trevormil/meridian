@@ -16,6 +16,10 @@ CREATE TABLE IF NOT EXISTS markets (
   yes_price            REAL,
   no_price             REAL,
   total_deposited      TEXT,
+  -- Lifetime traded volume in USDC base units. Sum of every fill's coin_amount,
+  -- monotonically increasing. Distinct from total_deposited (escrow), which
+  -- decreases as winners redeem after settle.
+  total_volume         TEXT NOT NULL DEFAULT '0',
   resolution_date      INTEGER,
   created_at           INTEGER NOT NULL,
   last_synced          INTEGER NOT NULL,
@@ -75,6 +79,37 @@ CREATE TABLE IF NOT EXISTS votes (
 CREATE TABLE IF NOT EXISTS sync_state (
   key    TEXT PRIMARY KEY,
   value  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS fills (
+  -- One row per usedApprovalDetails event. PK is (collection, approval_id,
+  -- approver) — Meridian intents all set afterOneUse:true so each approval
+  -- fills at most once. Makes backfill replays idempotent.
+  collection_id    TEXT NOT NULL,
+  approval_id      TEXT NOT NULL,
+  approver_address TEXT NOT NULL,
+  ts               INTEGER NOT NULL,
+  side             TEXT NOT NULL,
+  token_amount     TEXT NOT NULL,
+  coin_amount      TEXT NOT NULL,
+  price            REAL NOT NULL,
+  from_address     TEXT NOT NULL,
+  to_address       TEXT NOT NULL,
+  PRIMARY KEY (collection_id, approval_id, approver_address)
+);
+CREATE INDEX IF NOT EXISTS idx_fills_collection_ts ON fills(collection_id, ts DESC);
+CREATE INDEX IF NOT EXISTS idx_fills_from ON fills(from_address, ts DESC);
+CREATE INDEX IF NOT EXISTS idx_fills_to ON fills(to_address, ts DESC);
+
+CREATE TABLE IF NOT EXISTS uploads (
+  -- User-uploaded images for market creation. FE POSTs base64, we materialize,
+  -- return a URL the FE writes into the markets on-chain image field.
+  id          TEXT PRIMARY KEY,
+  mime        TEXT NOT NULL,
+  bytes       BLOB NOT NULL,
+  size        INTEGER NOT NULL,
+  created_at  INTEGER NOT NULL,
+  created_by  TEXT
 );
 `;
 

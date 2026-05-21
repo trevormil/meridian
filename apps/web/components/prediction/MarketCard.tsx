@@ -108,7 +108,7 @@ export function MarketCard({ market }: Props) {
             <span className="eyebrow">Volume</span>
             <CoinDisplay
               denom={market.depositDenom ?? env.usdcDenom}
-              amount={market.totalDeposited}
+              amount={market.totalVolume}
               size="sm"
               mono
             />

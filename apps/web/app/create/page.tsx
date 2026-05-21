@@ -23,7 +23,7 @@ export default function CreatePage() {
           } catch {
             // refresh failure is non-fatal; periodic loop will catch it
           }
-          router.push('/');
+          router.push('/markets');
         }}
       />
     </div>

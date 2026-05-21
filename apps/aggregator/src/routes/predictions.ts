@@ -43,6 +43,7 @@ function serializeMarket(r: MarketRow): unknown {
     yesPrice: r.yes_price,
     noPrice: r.no_price,
     totalDeposited: r.total_deposited,
+    totalVolume: (r as MarketRow & { total_volume?: string }).total_volume ?? '0',
     resolutionDate: r.resolution_date,
   };
 }

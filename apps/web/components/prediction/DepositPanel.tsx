@@ -15,6 +15,12 @@ import { parseAmount } from '@/lib/coins';
 import { env } from '@/lib/env';
 import type { MarketDto } from '@/lib/aggregator';
 
+/**
+ * Deposit panel — mirrors the bitbadges-frontend "PredictionDepositPanel"
+ * layout: amount input on top, then a "You Pay → You Receive" swap card
+ * appears once a non-zero amount is entered. Receive side lists YES + NO
+ * stacked (each = amount). Full-width Deposit CTA at the bottom.
+ */
 interface Props {
   collectionId: string;
   mintApprovalId: string | undefined;
@@ -30,11 +36,9 @@ export function DepositPanel({ collectionId, mintApprovalId, market, onSuccess }
   const depositDenom = market?.depositDenom ?? env.usdcDenom;
   const tokenAmt = parseAmount(amount, env.usdcDecimals);
   const insufficient = balance !== null && tokenAmt > balance;
+  const showSwap = tokenAmt > 0n;
   const disabled = !address || !mintApprovalId || tokenAmt === 0n || insufficient;
 
-  // useRefreshOnTx fires on mount AND whenever any tx confirms on chain. The
-  // bus emit waits for the actual block commit (Cosmos DeliverTx or EVM
-  // receipt), so we know the bank query will see post-tx state.
   useRefreshOnTx(() => {
     if (!address) {
       setBalance(null);
@@ -54,10 +58,6 @@ export function DepositPanel({ collectionId, mintApprovalId, market, onSuccess }
         </span>
       </CardHeader>
 
-      <p className="mb-5 text-xs leading-relaxed text-faint">
-        Mint paired YES + NO tokens. Trade either side, or redeem the winner 1:1 after settle.
-      </p>
-
       <AmountInput
         label="Amount"
         denom={depositDenom}
@@ -68,19 +68,44 @@ export function DepositPanel({ collectionId, mintApprovalId, market, onSuccess }
         error={insufficient ? 'Insufficient balance' : undefined}
       />
 
-      {/* Receive preview — YES and NO mint amounts side-by-side */}
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <ReceiveRow
-          side="yes"
-          denom={`badgeslp:${collectionId}:uyes`}
-          amount={amount || '0'}
-        />
-        <ReceiveRow
-          side="no"
-          denom={`badgeslp:${collectionId}:uno`}
-          amount={amount || '0'}
-        />
-      </div>
+      {showSwap && (
+        <div className="mt-5 space-y-2">
+          {/* You pay — USDC with logo */}
+          <div className="rounded border border-border bg-bg-deep px-4 py-3">
+            <div className="eyebrow mb-1.5">You pay</div>
+            <div className="text-xl font-semibold text-ink">
+              <CoinDisplay denom={depositDenom} amount={tokenAmt} size="md" mono />
+            </div>
+          </div>
+
+          {/* Swap arrow */}
+          <div className="flex justify-center">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-panel-2 text-gold">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <polyline points="19 12 12 19 5 12" />
+              </svg>
+            </div>
+          </div>
+
+          {/* You receive */}
+          <div className="rounded border border-border bg-bg-deep px-4 py-3">
+            <div className="eyebrow mb-2">You receive</div>
+            <div className="space-y-2">
+              <ReceiveLine
+                denom={`badgeslp:${collectionId}:uyes`}
+                side="yes"
+                amount={amount || '0'}
+              />
+              <ReceiveLine
+                denom={`badgeslp:${collectionId}:uno`}
+                side="no"
+                amount={amount || '0'}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mt-5">
         <TxButton
@@ -106,20 +131,17 @@ export function DepositPanel({ collectionId, mintApprovalId, market, onSuccess }
   );
 }
 
-function ReceiveRow({ side, denom, amount }: { side: 'yes' | 'no'; denom: string; amount: string }) {
-  const tone =
-    side === 'yes'
-      ? 'border-yes/30 bg-yes/5 text-yes'
-      : 'border-no/30 bg-no/5 text-no';
+function ReceiveLine({ denom, side, amount }: { denom: string; side: 'yes' | 'no'; amount: string }) {
+  const tone = side === 'yes' ? 'text-yes-bright' : 'text-no-bright';
   return (
-    <div className={`flex items-center justify-between rounded border ${tone} px-3 py-2`}>
+    <div className="flex items-center justify-between">
       <span className="flex items-center gap-2">
-        <CoinIcon denom={denom} size="sm" />
-        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em]">
+        <CoinIcon denom={denom} size="xs" />
+        <span className={`font-mono text-[10px] font-semibold uppercase tracking-[0.14em] ${tone}`}>
           {side.toUpperCase()}
         </span>
       </span>
-      <span className="font-mono text-sm text-ink">+{amount}</span>
+      <span className={`font-mono text-base font-semibold ${tone}`}>+{amount}</span>
     </div>
   );
 }

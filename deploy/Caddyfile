@@ -1,0 +1,40 @@
+# Caddy config for the Meridian stack. Four subdomains, each terminating
+# TLS via Let's Encrypt and reverse-proxying to the right backend.
+#
+# Required env (set on the host or in the Compose env file):
+#   DOMAIN_WEB         meridian.example.com
+#   DOMAIN_API         api.meridian.example.com
+#   DOMAIN_CHAIN_LCD   lcd.meridian.example.com
+#   DOMAIN_CHAIN_RPC   rpc.meridian.example.com
+#   ACME_EMAIL         you@example.com  (for Let's Encrypt account)
+
+{
+	email {$ACME_EMAIL}
+}
+
+# FE — Next.js
+{$DOMAIN_WEB} {
+	encode zstd gzip
+	reverse_proxy web:3000
+}
+
+# Aggregator REST + WS
+{$DOMAIN_API} {
+	encode zstd gzip
+	reverse_proxy aggregator:4001
+}
+
+# Chain LCD (Cosmos REST)
+{$DOMAIN_CHAIN_LCD} {
+	encode zstd gzip
+	# Chain runs on the host. host.docker.internal resolves via the
+	# extra_hosts entry on the caddy service if you wire it; OR replace with
+	# the host gateway IP. Adjust ports if your chain LCD isn't on :1317.
+	reverse_proxy http://host.docker.internal:1317
+}
+
+# Chain RPC (Tendermint JSON-RPC + WS)
+{$DOMAIN_CHAIN_RPC} {
+	encode zstd gzip
+	reverse_proxy http://host.docker.internal:26657
+}

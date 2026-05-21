@@ -149,44 +149,81 @@ function extractNewCollectionIds(events: any[]): Set<string> {
   return out;
 }
 
+/** Cosmos zero-pubkey burn address (the bech32 checksum is computed from
+ *  all-zero bytes — note the `s7gvmv` tail). Tokens sent here are burned;
+ *  used by the prediction-market redeem flow to convert winning YES/NO
+ *  tokens to USDC. Fills where `to == BURN` are settlement redemptions,
+ *  not trades, and must NOT influence the price chart or count as volume. */
+const BURN_ADDRESS = 'bb1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqs7gvmv';
+
+function isRedemptionApproval(approvalId: string): boolean {
+  // Mint, settle, and pre-settlement-redeem approvals all carry side-effects
+  // on user balances but aren't price discovery. Their approvalIds start
+  // with these prefixes (see SDK builder presets/prediction-market.ts).
+  return (
+    approvalId.startsWith('pm-mint-') ||
+    approvalId.startsWith('pm-redeem-') ||
+    approvalId.startsWith('pm-settle-')
+  );
+}
+
 function recordFill(f: UsedApprovalDetails): void {
-  const price = impliedYesPrice(f);
-  if (price === null) return; // mint / pair-redeem / fee-only — skip
-  recordCandle(f.collectionId, price, 1 - price);
-  updateMarketPrice(f.collectionId, price, 1 - price);
   const tokenStart = f.balances[0]?.tokenIds?.[0]?.start;
   const side = tokenStart === '1' ? 'yes' : 'no';
   const tokenAmount = f.balances[0]?.amount ?? '0';
-  // First non-protocol-fee coin transfer = the USDC leg of the trade.
   const usdc = f.coinTransfers.find((c) => !c.IsProtocolFee);
   const coinAmount = usdc?.Amount ?? '0';
   const approvalUsed = f.approvalsUsed.find((a) => a.ApprovalLevel !== 'collection') ?? f.approvalsUsed[0];
 
-  // Materialize one row per fill. PK on (collection, approval_id, approver)
-  // makes backfill replays idempotent.
-  if (approvalUsed) {
-    getDb()
-      .prepare(
-        `INSERT OR IGNORE INTO fills
-           (collection_id, approval_id, approver_address, ts, side, token_amount, coin_amount, price, from_address, to_address)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        f.collectionId,
-        approvalUsed.ApprovalId,
-        approvalUsed.ApproverAddress,
-        Date.now(),
-        side,
-        tokenAmount,
-        coinAmount,
-        price,
-        f.from,
-        f.to,
-      );
-    // Push to the `fills:{id}` realtime channel so the FE activity tab
-    // appends without polling.
-    publish(channel.fills(f.collectionId), snapshotFills(f.collectionId));
+  // Skip redemptions + mints entirely — they're balance plumbing, not trades.
+  // Detection: either the recipient is the burn sink, OR the approval used
+  // is one of the protocol approvals (mint / pre-settle / settle paths).
+  const isRedemption =
+    f.to === BURN_ADDRESS || (approvalUsed && isRedemptionApproval(approvalUsed.ApprovalId));
+  if (isRedemption) return;
+
+  const price = impliedYesPrice(f);
+  if (price === null) return; // mint / pair-redeem / fee-only — skip
+
+  // Materialize the fill row FIRST; only emit candles + publish if it's new.
+  // Backfill replays already INSERT OR IGNORE here, so for a known fill the
+  // PK collision means changes=0 and we skip the noisy candle re-write +
+  // log line + ws push.
+  if (!approvalUsed) return;
+  const insertRes = getDb()
+    .prepare(
+      `INSERT OR IGNORE INTO fills
+         (collection_id, approval_id, approver_address, ts, side, token_amount, coin_amount, price, from_address, to_address)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      f.collectionId,
+      approvalUsed.ApprovalId,
+      approvalUsed.ApproverAddress,
+      Date.now(),
+      side,
+      tokenAmount,
+      coinAmount,
+      price,
+      f.from,
+      f.to,
+    );
+  if (insertRes.changes === 0) {
+    // Already seen this fill — silent no-op (avoids the per-30s backfill spam).
+    return;
   }
+
+  // New fill: write candle, bump volume, publish, log.
+  recordCandle(f.collectionId, price, 1 - price);
+  updateMarketPrice(f.collectionId, price, 1 - price);
+  getDb()
+    .prepare(
+      `UPDATE markets
+         SET total_volume = CAST(CAST(total_volume AS INTEGER) + CAST(? AS INTEGER) AS TEXT)
+       WHERE collection_id = ?`,
+    )
+    .run(coinAmount, f.collectionId);
+  publish(channel.fills(f.collectionId), snapshotFills(f.collectionId));
 
   console.log(
     `[tx-watcher] fill #${f.collectionId} ${side.toUpperCase()} ${tokenAmount} → YES=${price.toFixed(4)} (${f.from.slice(0, 10)}…→${f.to.slice(0, 10)}…)`,

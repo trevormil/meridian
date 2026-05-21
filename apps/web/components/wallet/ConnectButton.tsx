@@ -131,6 +131,12 @@ export function ConnectButton() {
 
   return (
     <div className="flex h-8 items-center gap-2" data-testid="wallet-connected">
+      {/* Hidden testid carrying the persona name. Used by the Playwright suite
+          to assert "connected as e2e-alice" without exposing the persona label
+          in the visible pill (the user-facing UI only shows the address). */}
+      <span className="sr-only" data-testid="wallet-name">
+        {w.name ?? ''}
+      </span>
       <button
         type="button"
         onClick={copy}

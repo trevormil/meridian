@@ -2,31 +2,65 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body {
-  background: #07070a;
-  color: #f5f5f7;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-feature-settings: 'cv11', 'ss03';
+/**
+ * Switzer (Indian Type Foundry, free at fontshare.com) — geometric sans
+ * with character. Used for UI labels, body, and form controls.
+ */
+@import url('https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700&display=swap');
+
+html,
+body {
+  background: #0B0908;
+  color: #F5EFDF;
+  font-family: var(--font-switzer), 'Switzer', ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  background-image:
-    radial-gradient(ellipse 60% 40% at top, rgba(59, 130, 246, 0.08), transparent 60%),
-    radial-gradient(ellipse 40% 30% at 20% 100%, rgba(139, 92, 246, 0.05), transparent 60%);
   min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Film-grain overlay sits ABOVE the HeroAtmosphere (z:0) but below content (z:2).
+   The grain layer is pointer-events-none + mix-blend-overlay so it doesn't
+   occlude any moving auroras beneath. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.05 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  opacity: 0.45;
+  mix-blend-mode: overlay;
 }
 
 * { box-sizing: border-box; }
 a { color: inherit; text-decoration: none; }
 
-/* Range slider styling */
+::selection {
+  background: rgba(232, 177, 74, 0.25);
+  color: #F5EFDF;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: #2A231D;
+  border-radius: 999px;
+  border: 2px solid #0B0908;
+}
+::-webkit-scrollbar-thumb:hover { background: #3D332B; }
+
 input[type='range'] {
   -webkit-appearance: none;
   appearance: none;
-  height: 4px;
-  background: #26262d;
-  border-radius: 9999px;
+  height: 3px;
+  background: linear-gradient(to right, #3D332B, #2A231D);
+  border-radius: 0;
   outline: none;
 }
 input[type='range']::-webkit-slider-thumb {
@@ -34,18 +68,17 @@ input[type='range']::-webkit-slider-thumb {
   appearance: none;
   width: 14px;
   height: 14px;
-  background: #3b82f6;
+  background: linear-gradient(180deg, #F4C766, #C7943A);
   border-radius: 50%;
   cursor: pointer;
-  border: 2px solid #07070a;
-  transition: transform 100ms ease-out, box-shadow 100ms ease-out;
+  border: 2px solid #0B0908;
+  transition: transform 120ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 120ms;
 }
 input[type='range']::-webkit-slider-thumb:hover {
-  transform: scale(1.15);
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+  transform: scale(1.2);
+  box-shadow: 0 0 0 6px rgba(232, 177, 74, 0.18);
 }
 
-/* Number input spinners off */
 input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button {
   -webkit-appearance: none;
@@ -53,14 +86,49 @@ input[type='number']::-webkit-outer-spin-button {
 }
 input[type='number'] { -moz-appearance: textfield; }
 
-/* Skeleton shimmer */
 @keyframes shimmer {
   0% { background-position: -200px 0; }
   100% { background-position: calc(200px + 100%) 0; }
 }
 .skeleton {
-  background: linear-gradient(90deg, #181820 0%, #26262d 50%, #181820 100%);
+  background: linear-gradient(90deg, #15110E 0%, #2A231D 50%, #15110E 100%);
   background-size: 200px 100%;
-  animation: shimmer 1.4s linear infinite;
-  border-radius: 6px;
+  animation: shimmer 1.6s ease-in-out infinite;
+  border-radius: 4px;
 }
+
+.font-mono,
+[class*='font-mono'] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1, 'zero' 1;
+}
+
+.hairline {
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(232, 177, 74, 0.15) 20%,
+    rgba(232, 177, 74, 0.15) 80%,
+    transparent
+  );
+  height: 1px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+[role='button']:focus-visible {
+  outline: 2px solid rgba(232, 177, 74, 0.5);
+  outline-offset: 2px;
+}
+
+.eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #7A7060;
+}
+
+/* Stacking: HeroAtmosphere at z:0, grain overlay at z:1, content at z:2 */
+main, header, footer { position: relative; z-index: 2; }

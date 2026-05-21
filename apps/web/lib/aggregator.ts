@@ -14,6 +14,8 @@ export interface MarketDto {
   yesPrice: number;
   noPrice: number;
   totalDeposited: string;
+  /** Lifetime traded volume — sum of all fills' USDC amount. Monotonic. */
+  totalVolume: string;
   resolutionDate: number | null;
 }
 

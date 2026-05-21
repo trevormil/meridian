@@ -3,7 +3,6 @@ import { ProbabilityBar } from './ProbabilityBar';
 import { CoinDisplay } from '@/components/ui/CoinDisplay';
 import { AddressDisplay } from '@/components/ui/AddressDisplay';
 import { UsdcSymbol } from '@/components/ui/UsdcSymbol';
-import { pct } from '@/lib/format';
 import { env } from '@/lib/env';
 import type { MarketDto } from '@/lib/aggregator';
 
@@ -49,23 +48,15 @@ export function MarketHeader({ market }: Props) {
           {market.description && <p className="mt-1.5 text-sm text-muted">{market.description}</p>}
         </div>
 
-        <div className="hidden flex-shrink-0 text-right md:block">
-          <div className="text-[10px] uppercase tracking-wider text-muted">Probability</div>
-          <div className="mt-1 flex items-end gap-1.5 font-mono text-2xl font-bold">
-            <span className="text-yes">{pct(market.yesPrice)}</span>
-            <span className="text-muted text-base">/</span>
-            <span className="text-no">{pct(market.noPrice)}</span>
-          </div>
-        </div>
       </div>
 
       <div className="mt-5">
-        <ProbabilityBar yesPrice={market.yesPrice} noPrice={market.noPrice} size="lg" showLabels={false} />
+        <ProbabilityBar yesPrice={market.yesPrice} noPrice={market.noPrice} size="lg" showLabels />
         <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted">
           <Stat label="Verifier" value={<AddressDisplay address={market.verifierAddress} size={14} className="text-ink" />} />
           <Stat
             label="Total volume"
-            value={<CoinDisplay denom={market.depositDenom ?? env.usdcDenom} amount={market.totalDeposited} size="sm" />}
+            value={<CoinDisplay denom={market.depositDenom ?? env.usdcDenom} amount={market.totalVolume} size="sm" />}
           />
           <Stat label="Backing" value={<UsdcSymbol size="sm" className="font-medium text-ink" />} />
         </div>

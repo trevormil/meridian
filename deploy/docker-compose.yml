@@ -1,0 +1,103 @@
+# Meridian — single-droplet docker-compose stack.
+#
+# Services:
+#   chain       — bitbadgeschaind (run as systemd unit on the host, NOT here;
+#                 Cosmos nodes are stateful, IO-heavy, and shouldn't share a
+#                 container restart lifecycle with the app)
+#   aggregator  — Bun indexer + REST + WS + seeder + arb bot (the brain)
+#   web         — Next.js prod FE
+#   caddy       — reverse proxy + automatic Let's Encrypt TLS
+#
+# Cron scripts (`meridian:morning`, `meridian:evening`) run from the host's
+# crontab via `docker compose exec aggregator bun run meridian:morning` —
+# they share the aggregator's container so they reuse its bun cache + env.
+# See deploy/crontab.example.
+
+version: "3.9"
+
+services:
+  aggregator:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.aggregator
+    container_name: meridian-aggregator
+    restart: always
+    environment:
+      # Chain endpoints — the chain itself runs on the host; from inside the
+      # container we reach it via host.docker.internal (default DNS on Docker
+      # Desktop) or the gateway IP (Linux Docker daemon).
+      LCD_URL: "${CHAIN_LCD_URL:-http://host.docker.internal:1317}"
+      RPC_URL: "${CHAIN_RPC_URL:-http://host.docker.internal:26657}"
+      RPC_HTTP_URL: "${CHAIN_RPC_URL:-http://host.docker.internal:26657}"
+      TENDERMINT_WS_URL: "${CHAIN_WS_URL:-ws://host.docker.internal:26657/websocket}"
+      PORT: "4001"
+      SEED_MODE: "true"
+      BLOCK_CHECK_INTERVAL_MS: "1500"
+      PRICE_POLL_EVERY_BLOCKS: "1"
+      BOOTSTRAP_MAX_COLLECTION_ID: "5000"
+    volumes:
+      # SQLite + WAL files survive container restarts.
+      - aggregator-data:/app/apps/aggregator/data
+      # Mnemonic fixtures from k8s/Compose Secret-equivalent (host bind, mode 0400).
+      - ${FIXTURES_DIR:-./fixtures}:/app/apps/aggregator/fixtures:ro
+    extra_hosts:
+      # Lets the container resolve host.docker.internal on Linux Docker too.
+      - "host.docker.internal:host-gateway"
+    expose:
+      - "4001"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+      args:
+        NEXT_PUBLIC_AGGREGATOR_URL: "https://${DOMAIN_API}"
+        NEXT_PUBLIC_LCD_URL: "https://${DOMAIN_CHAIN_LCD}"
+        NEXT_PUBLIC_RPC_URL: "https://${DOMAIN_CHAIN_RPC}"
+    container_name: meridian-web
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+    depends_on:
+      aggregator:
+        condition: service_healthy
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: meridian-caddy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    environment:
+      DOMAIN_WEB: "${DOMAIN_WEB}"
+      DOMAIN_API: "${DOMAIN_API}"
+      DOMAIN_CHAIN_LCD: "${DOMAIN_CHAIN_LCD}"
+      DOMAIN_CHAIN_RPC: "${DOMAIN_CHAIN_RPC}"
+      ACME_EMAIL: "${ACME_EMAIL}"
+    extra_hosts:
+      # Lets Caddy reach the host-side bitbadgeschaind (LCD :1317 + RPC :26657)
+      # without going through a public URL. On Linux Docker, host.docker.internal
+      # doesn't resolve without this explicit entry.
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - web
+      - aggregator
+
+volumes:
+  aggregator-data:
+  caddy-data:
+  caddy-config:

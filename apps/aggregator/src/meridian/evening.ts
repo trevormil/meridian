@@ -16,6 +16,7 @@
 
 import { env } from '../env.js';
 import { getDb } from '../db/index.js';
+import { getCollection } from '../chain/lcd.js';
 import { MAG7, type Ticker } from './constants.js';
 import { fetchPriceQuote } from './prices.js';
 import { getOracleSigner, oracleBroadcast } from './signer.js';
@@ -29,6 +30,17 @@ function loadCollectionJson(collectionId: string): any | null {
   if (!row?.raw_collection_json) return null;
   try {
     return JSON.parse(row.raw_collection_json);
+  } catch {
+    return null;
+  }
+}
+
+/** Direct LCD fallback for when the aggregator's view filters out the market
+ *  (e.g. e2e [E2E]-labeled markets that bootstrap.isHiddenTestMarket skips).
+ *  Same shape as the cached JSON; we only need `collectionApprovals` from it. */
+async function fetchCollectionFromChain(collectionId: string): Promise<any | null> {
+  try {
+    return await getCollection(collectionId);
   } catch {
     return null;
   }
@@ -70,19 +82,22 @@ function buildVoteEnvelope(creator: string, collectionId: string, approvalId: st
 }
 
 /**
- * Wait until the aggregator's DB has the raw collection JSON for `collectionId`.
- * The morning script creates the market via a single tx, but the aggregator's
- * bootstrap scanner walks IDs forward + caches the collection JSON on a 15s
- * loop. We wait up to ~30s so the evening script has the approvalIds it needs.
+ * Resolve the collection JSON we need to extract approval IDs from. First
+ * try the aggregator's cached `markets.raw_collection_json` (fast, no LCD
+ * round-trip). If the aggregator filtered this market out (e.g. [E2E] test
+ * markets hidden by `bootstrap.isHiddenTestMarket`), poll briefly and then
+ * fall back to a direct chain query — the chain is the source of truth and
+ * the script doesn't actually need the aggregator's cache to work.
  */
-async function untilCollectionCached(collectionId: string, timeoutMs = 30_000): Promise<any | null> {
+async function resolveCollection(collectionId: string, timeoutMs = 12_000): Promise<any | null> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     const c = loadCollectionJson(collectionId);
     if (c) return c;
     await new Promise((res) => setTimeout(res, 1500));
   }
-  return null;
+  // Aggregator never cached it. Fetch from chain LCD directly.
+  return await fetchCollectionFromChain(collectionId);
 }
 
 async function settleOne(
@@ -91,9 +106,9 @@ async function settleOne(
   closingPrice: number,
 ): Promise<{ outcome: 'yes' | 'no' } | null> {
   const outcome: 'yes' | 'no' = closingPrice >= row.strike ? 'yes' : 'no';
-  const collection = await untilCollectionCached(row.collection_id);
+  const collection = await resolveCollection(row.collection_id);
   if (!collection) {
-    console.error(`[meridian:evening] ${row.ticker} > $${row.strike}: collection #${row.collection_id} not indexed by aggregator yet — skip`);
+    console.error(`[meridian:evening] ${row.ticker} > $${row.strike}: collection #${row.collection_id} not reachable via aggregator or LCD — skip`);
     return null;
   }
   // Prefix is `pm-settle-yes-` / `pm-settle-no-` (NOT `pm-settle-yes-wins-`).

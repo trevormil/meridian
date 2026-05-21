@@ -20,6 +20,7 @@ interface MarketRow {
   yes_price: number;
   no_price: number;
   total_deposited: string;
+  total_volume: string;
   resolution_date: number | null;
 }
 
@@ -38,6 +39,7 @@ export function serializeMarketRow(r: MarketRow): unknown {
     yesPrice: r.yes_price,
     noPrice: r.no_price,
     totalDeposited: r.total_deposited,
+    totalVolume: r.total_volume ?? '0',
     resolutionDate: r.resolution_date,
   };
 }

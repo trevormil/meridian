@@ -26,6 +26,9 @@ test('faucet card renders + dispenses USDC', async ({ page, request }) => {
   await expect(claim).toBeEnabled();
   await claim.click();
 
-  // Success banner shows the tx hash.
-  await expect(page.getByText(/sent — tx [0-9a-f]/i)).toBeVisible({ timeout: 15_000 });
+  // Post-redesign: the claim result no longer renders inline on the card —
+  // it routes through the global tx-bus, which the ToastProvider subscribes
+  // to + surfaces as a "Tx confirmed" toast in the top-right corner. The
+  // toast carries the tx hash as a linked sub-element.
+  await expect(page.getByText(/Tx confirmed/i)).toBeVisible({ timeout: 15_000 });
 });

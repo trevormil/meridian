@@ -9,6 +9,7 @@ import { BrandLogo } from '@/components/BrandLogo';
 import { TradingDayBar } from '@/components/TradingDayBar';
 import { NavLink } from '@/components/NavLink';
 import { MarketStatusPill } from '@/components/MarketStatusPill';
+import { HeroAtmosphere } from '@/components/HeroAtmosphere';
 
 /**
  * Fraunces — Google's contemporary serif. Used sparingly for marquee
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ToastProvider>
             <RealtimeWarmup />
             <OrderFillWatcher />
+            <HeroAtmosphere />
 
             {/* Signature: thin trading-day timeline at the very top — gold
                 fill up to "now", open + close ticks. Atmosphere, not chrome. */}
@@ -63,7 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
                 {/* Center nav — flexes to fill */}
                 <nav className="hidden flex-1 items-center justify-center gap-1 sm:flex">
-                  <NavLink href="/">Markets</NavLink>
+                  <NavLink href="/markets">Markets</NavLink>
                   <NavLink href="/portfolio">Portfolio</NavLink>
                   <NavLink href="/create">Create</NavLink>
                 </nav>
@@ -135,7 +137,7 @@ function Footer() {
             <FooterColumn
               title="Product"
               links={[
-                { label: 'Markets', href: '/' },
+                { label: 'Markets', href: '/markets' },
                 { label: 'Portfolio', href: '/portfolio' },
                 { label: 'Create', href: '/create' },
               ]}
