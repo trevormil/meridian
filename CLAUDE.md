@@ -27,6 +27,8 @@ bitbadges-pm/
 │       │   ├── routes/         predictions.ts, tx.ts, node.ts
 │       │   ├── workers/        bootstrap, price-poller, intent-watcher,
 │       │   │                   stats-poller, tx-watcher, status-updater
+│       │   ├── bot/             seeder + arbitrage workers
+│       │   ├── meridian/        daily lifecycle scripts (8 AM / 4:05 PM)
 │       │   └── scripts/        reset-cursor.ts
 │       └── test/e2e/           Chain-driving e2e suite (7 scenarios, 2 personas)
 └── package.json            Bun workspace
@@ -36,6 +38,38 @@ bitbadges-pm/
 markets, votes, fills, candles in SQLite) → FE (talks to aggregator for
 metadata/lists; SDK signs directly via aggregator's `/api/v0/{simulate,broadcast}`
 proxy).
+
+## Meridian daily lifecycle
+
+Per the Meridian project spec — daily binary-outcome markets on MAG7 stocks
+(AAPL, MSFT, GOOGL, AMZN, NVDA, META, TSLA). Each day creates ~5-7 strike
+markets per ticker (±3/6/9% from prev close, rounded to $10, dedup) and
+settles them after market close.
+
+```bash
+cd apps/aggregator
+bun run meridian:bootstrap   # one-time, drips BADGE+USDC from bot → oracle
+bun run meridian:morning     # 8:00 AM ET cron — creates that day's strikes
+bun run meridian:evening     # 4:05 PM ET cron — settles via oracle vote
+```
+
+**Oracle**: `bb1teqphl72qc32xy95m3jvnkdv78lvwn096yewjl` (account `oracle` in
+`bitbadgeschain/config.yml`). Mnemonic in `apps/aggregator/fixtures/oracle.json`
+(gitignored). Designated verifier on every Meridian market.
+
+**Price source**: Yahoo Finance unauthenticated chart endpoint
+`https://query1.finance.yahoo.com/v8/finance/chart/{SYMBOL}` — free, no API
+key, public historical+current closes. Production would swap to Polygon /
+Alpha Vantage / IEX with a paid key.
+
+**Cron** (US/Eastern):
+```
+0  8  * * 1-5  cd /path/to/bitbadges-pm/apps/aggregator && bun run meridian:morning >> /var/log/meridian-morning.log 2>&1
+5 16  * * 1-5  cd /path/to/bitbadges-pm/apps/aggregator && bun run meridian:evening >> /var/log/meridian-evening.log 2>&1
+```
+
+Both scripts idempotent — re-runs skip already-created / already-settled rows
+via the `meridian_markets.UNIQUE(ticker, strike, close_date)` constraint.
 
 ## Quick run
 
