@@ -120,10 +120,25 @@ A general indexer would require dozens of mappings for one product.
 The custom sidecar is ~1 week of work and trivially deployable.
 
 **Real-time path**: Bun.serve hosts HTTP and a single `/ws` channel.
-Five channels (`markets`, `market:{id}`, `intents:{id}`,
-`intents-owner:{addr}`, `candle:{id}`) push snapshots on subscribe +
-deltas on each chain event. The FE consumes via a singleton
+Six channels (`markets`, `market:{id}`, `intents:{id}`,
+`intents-owner:{addr}`, `candle:{id}`, `fills:{id}`) push snapshots on
+subscribe + deltas on each chain event. The FE consumes via a singleton
 `useRealtime` hook — no polling.
+
+**Volume vs escrow**: two distinct columns on the `markets` table —
+`total_deposited` (current escrow, drops as winners redeem post-settle)
+and `total_volume` (monotonic lifetime traded, sum of every fill's USDC
+amount). The FE shows volume; escrow is internal state. Redemption fills
+(YES → burn for $1) are explicitly excluded from both volume and the
+price chart — `recordFill` detects them by `to == BURN_ADDRESS` OR by
+approval ID prefix (`pm-mint-` / `pm-redeem-` / `pm-settle-`).
+
+**Image uploads**: `POST /api/v0/uploads` accepts a base64 data URL
+(PNG/JPEG/WEBP/GIF, ≤1.5MB), materializes the binary in SQLite, and
+returns an absolute URL the FE writes into the market's on-chain `image`
+field. `GET /api/v0/uploads/:id` serves the binary with year-long
+immutable cache headers. Cheaper than baking a dataURL into chain
+metadata; survives if the FE host changes.
 
 ## Bots: seeder + arbitrage, always-on
 

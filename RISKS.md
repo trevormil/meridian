@@ -60,11 +60,17 @@ legal advice.
 
 ## Chain & infrastructure
 
-- **No mainnet.** Meridian runs on a local / dev BitBadges chain with
-  protocol fees disabled. Real funds are not in play.
-- **Single aggregator.** The aggregator is a single Node process backed
+- **No mainnet.** Meridian runs on a self-hosted BitBadges devnet with
+  protocol fees disabled. Real funds are not in play. Production deploy
+  is a single $24/mo DigitalOcean droplet — adequate for the demo, but
+  a single point of failure.
+- **Single aggregator.** The aggregator is a single Bun process backed
   by SQLite. It is not horizontally scaled; loss of the DB = re-bootstrap
   from the chain (slow but lossless).
+- **Single chain validator.** The droplet runs a single-validator
+  bitbadgeschaind. Liveness depends on that one node; double-signing is
+  impossible (only one signer) but the chain halts if the node halts.
+  Production would stand up a 3+ validator set with sentry topology.
 - **Cosmos finality.** Block time is ~1.5s on this devnet. Transaction
   ordering is single-block-atomic; cross-block sequencing for the
   seeder / arb bot relies on a 60s recent-failure cooldown to avoid
