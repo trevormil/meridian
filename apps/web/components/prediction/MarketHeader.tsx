@@ -1,7 +1,9 @@
 import { Card } from '@/components/ui/Card';
 import { ProbabilityBar } from './ProbabilityBar';
 import { CoinDisplay } from '@/components/ui/CoinDisplay';
-import { shortAddr, pct } from '@/lib/format';
+import { AddressDisplay } from '@/components/ui/AddressDisplay';
+import { UsdcSymbol } from '@/components/ui/UsdcSymbol';
+import { pct } from '@/lib/format';
 import { env } from '@/lib/env';
 import type { MarketDto } from '@/lib/aggregator';
 
@@ -60,12 +62,12 @@ export function MarketHeader({ market }: Props) {
       <div className="mt-5">
         <ProbabilityBar yesPrice={market.yesPrice} noPrice={market.noPrice} size="lg" showLabels={false} />
         <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted">
-          <Stat label="Verifier" value={<code className="font-mono text-ink">{shortAddr(market.verifierAddress)}</code>} />
+          <Stat label="Verifier" value={<AddressDisplay address={market.verifierAddress} size={14} className="text-ink" />} />
           <Stat
             label="Total volume"
             value={<CoinDisplay denom={market.depositDenom ?? env.usdcDenom} amount={market.totalDeposited} size="sm" />}
           />
-          <Stat label="Backing" value={<span className="font-medium text-ink">{env.usdcSymbol}</span>} />
+          <Stat label="Backing" value={<UsdcSymbol size="sm" className="font-medium text-ink" />} />
         </div>
       </div>
     </Card>

@@ -5,7 +5,10 @@ import { useWallet } from '@/contexts/WalletContext';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { env } from '@/lib/env';
-import { shortAddr } from '@/lib/format';
+import { txBus } from '@/lib/tx-bus';
+import { useToast } from '@/components/ui/Toasts';
+import { AddressDisplay } from '@/components/ui/AddressDisplay';
+import { CoinLogo } from '@/components/ui/CoinLogo';
 
 interface FaucetStatus {
   enabled: boolean;
@@ -26,7 +29,7 @@ export function FaucetCard() {
   const { address } = useWallet();
   const [status, setStatus] = useState<FaucetStatus | null>(null);
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const toast = useToast();
 
   const refresh = async () => {
     try {
@@ -55,7 +58,6 @@ export function FaucetCard() {
   async function claim() {
     if (!address) return;
     setBusy(true);
-    setResult(null);
     try {
       const r = await fetch(`${env.aggregatorUrl}/api/v0/faucet/claim`, {
         method: 'POST',
@@ -64,16 +66,21 @@ export function FaucetCard() {
       });
       const j = await r.json();
       if (j.ok) {
-        setResult({
-          ok: true,
-          msg: `+${perClaimDisplay} ${env.usdcSymbol} sent — tx ${String(j.txHash).slice(0, 12)}…`,
-        });
+        // tx-bus emit triggers every chain-direct query (portfolio USDC,
+        // deposit panel balance, etc) to refetch with post-send state. The
+        // ToastProvider subscribes to the bus and auto-fires a "Tx confirmed"
+        // toast, so no manual toast here.
+        txBus.emit(String(j.txHash));
       } else {
-        setResult({ ok: false, msg: j.detail ?? j.error ?? 'faucet failed' });
+        toast.show({
+          kind: 'error',
+          title: 'Faucet claim failed',
+          detail: j.detail ?? j.error ?? 'unknown error',
+        });
       }
       await refresh();
     } catch (e) {
-      setResult({ ok: false, msg: (e as Error).message });
+      toast.show({ kind: 'error', title: 'Faucet error', detail: (e as Error).message });
     } finally {
       setBusy(false);
     }
@@ -86,21 +93,22 @@ export function FaucetCard() {
         <span className="text-[10px] uppercase tracking-wider text-muted">dev only</span>
       </CardHeader>
       <div className="space-y-3">
-        <p className="text-sm text-muted">
-          Tap {perClaimDisplay} {env.usdcSymbol} from the dev faucet to your connected wallet.
+        <p className="flex items-center gap-1.5 text-sm text-muted">
+          Tap {perClaimDisplay} <CoinLogo denom={env.usdcSymbol} size={14} /> {env.usdcSymbol} from the dev faucet to your connected wallet.
         </p>
         <div className="flex items-center justify-between rounded border border-border bg-bg/60 p-3 text-xs">
           <div>
             <div className="text-muted">Faucet balance</div>
-            <div className="font-mono text-ink">
-              {balanceDisplay} {env.usdcSymbol}{' '}
+            <div className="mt-0.5 flex items-center gap-1.5">
+              <CoinLogo denom={env.usdcSymbol} size={14} />
+              <span className="font-mono text-ink">{balanceDisplay} {env.usdcSymbol}</span>
               <span className="text-muted">({status.claimsLeft ?? 0} claims left)</span>
             </div>
           </div>
           {status.address && (
             <div className="text-right">
               <div className="text-muted">From</div>
-              <div className="font-mono text-[10px]">{shortAddr(status.address)}</div>
+              <AddressDisplay address={status.address} size={12} copyable={false} className="text-ink" />
             </div>
           )}
         </div>
@@ -112,15 +120,6 @@ export function FaucetCard() {
         >
           {address ? `Claim ${perClaimDisplay} ${env.usdcSymbol}` : 'Connect a wallet first'}
         </Button>
-        {result && (
-          <div
-            className={`rounded border p-2 text-xs ${
-              result.ok ? 'border-yes/40 bg-yes/10 text-yes' : 'border-no/40 bg-no/10 text-no'
-            }`}
-          >
-            {result.msg}
-          </div>
-        )}
       </div>
     </Card>
   );

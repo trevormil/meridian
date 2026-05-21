@@ -6,7 +6,8 @@ import { ProbabilityBar } from './ProbabilityBar';
 import { PriceChart } from './PriceChart';
 import { CoinDisplay } from '@/components/ui/CoinDisplay';
 import { CoinIcon } from '@/components/ui/CoinIcon';
-import { shortAddr, pct } from '@/lib/format';
+import { AddressDisplay } from '@/components/ui/AddressDisplay';
+import { pct } from '@/lib/format';
 import { env } from '@/lib/env';
 
 interface Props {
@@ -40,7 +41,7 @@ export function MarketOverviewTab({ market }: Props) {
           <dl className="space-y-3 text-sm">
             <Row label="Total volume" value={<CoinDisplay denom={market.depositDenom ?? env.usdcDenom} amount={market.totalDeposited} size="sm" />} />
             <Row label="Backing coin" value={<span className="flex items-center gap-1.5"><CoinIcon denom={market.depositDenom ?? env.usdcDenom} size="xs" /> {env.usdcSymbol}</span>} />
-            <Row label="Verifier" value={<code className="font-mono text-xs">{shortAddr(market.verifierAddress)}</code>} />
+            <Row label="Verifier" value={<AddressDisplay address={market.verifierAddress} size={14} className="text-ink" />} />
             <Row label="Collection" value={<span className="font-mono text-xs">#{market.collectionId}</span>} />
             <Row label="Status" value={<span className="capitalize">{market.status.replace(/-/g, ' ')}</span>} />
           </dl>

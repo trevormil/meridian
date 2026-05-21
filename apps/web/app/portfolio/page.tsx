@@ -7,6 +7,7 @@ import { getBankBalances, getUserBalance, type Coin } from '@/lib/chain/lcd';
 import { aggregator, type IntentDto, type MarketDto } from '@/lib/aggregator';
 import { useRealtime } from '@/lib/useRealtime';
 import { ch } from '@/lib/realtime';
+import { useRefreshOnTx } from '@/lib/tx-bus';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { CoinDisplay } from '@/components/ui/CoinDisplay';
 import { CoinIcon } from '@/components/ui/CoinIcon';
@@ -15,6 +16,7 @@ import { Button } from '@/components/ui/Button';
 import { sumYesNo } from '@/lib/prediction-market/balances';
 import { env } from '@/lib/env';
 import { FaucetCard } from '@/components/wallet/FaucetCard';
+import { UsdcSymbol } from '@/components/ui/UsdcSymbol';
 
 interface Position {
   market: MarketDto;
@@ -27,18 +29,19 @@ export default function PortfolioPage() {
   const [positions, setPositions] = useState<Position[]>([]);
   const [usdc, setUsdc] = useState<bigint>(0n);
   const [loading, setLoading] = useState(false);
-  const [refreshTick, setRefreshTick] = useState(0);
 
   // Realtime: any change to ANY of this user's intents on any market is pushed
-  // to us. Positions + bank balance are still chain-side and refetched on tick.
+  // to us. Positions + bank balance are still chain-side and refetched on tx
+  // confirm via the tx-bus.
   const intents = useRealtime<IntentDto[]>(address ? ch.intentsOwner(address) : null) ?? [];
 
   // Realtime: any market metadata change re-fires this and we recompute positions.
-  // Cheap because the heavy work is the per-collection UserBalance lookup; that's
-  // gated by the same tick.
   const markets = useRealtime<MarketDto[]>(ch.markets) ?? null;
 
-  useEffect(() => {
+  // Refresh bank + position queries on mount AND on every tx confirmation
+  // (deposit, fill, redeem, faucet, etc.) so the user never has to manually
+  // reload the page to see post-tx balances.
+  useRefreshOnTx(() => {
     if (!address || markets === null) return;
     let cancel = false;
     setLoading(true);
@@ -62,10 +65,10 @@ export default function PortfolioPage() {
       setUsdc(BigInt(u?.amount ?? '0'));
       setLoading(false);
     })().catch(() => setLoading(false));
-    return () => {
-      cancel = true;
-    };
-  }, [address, markets, refreshTick]);
+    // No teardown wired here — `cancel` is read by the async closure above so
+    // a late-arriving response from a stale render won't overwrite fresh state.
+    // useRefreshOnTx's internal effect handles re-run scheduling.
+  }, [address, markets]);
 
   if (!address) {
     return (
@@ -88,7 +91,9 @@ export default function PortfolioPage() {
         <Card variant="hero" className="bg-hero-radial">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted">Available {env.usdcSymbol}</div>
+              <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
+                Available <UsdcSymbol />
+              </div>
               <div className="mt-1 flex items-center gap-3">
                 <CoinIcon denom={env.usdcDenom} size="lg" />
                 <CoinDisplay denom={env.usdcDenom} amount={usdc} icon={false} size="lg" mono />

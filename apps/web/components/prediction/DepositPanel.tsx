@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useWallet } from '@/contexts/WalletContext';
+import { useRefreshOnTx } from '@/lib/tx-bus';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { AmountInput } from '@/components/ui/AmountInput';
 import { CoinDisplay } from '@/components/ui/CoinDisplay';
 import { CoinIcon } from '@/components/ui/CoinIcon';
+import { UsdcSymbol } from '@/components/ui/UsdcSymbol';
 import { TxButton } from '@/components/tx/TxButton';
 import { buildPredictionMarketDepositMsg } from '@/lib/prediction-market/sdk';
 import { getMarketBalances } from '@/lib/prediction-market/balances';
@@ -24,14 +26,16 @@ export function DepositPanel({ collectionId, mintApprovalId, market, onSuccess }
   const { address } = useWallet();
   const [amount, setAmount] = useState('10');
   const [balance, setBalance] = useState<bigint | null>(null);
-  const [tick, setTick] = useState(0);
 
   const depositDenom = market?.depositDenom ?? env.usdcDenom;
   const tokenAmt = parseAmount(amount, env.usdcDecimals);
   const insufficient = balance !== null && tokenAmt > balance;
   const disabled = !address || !mintApprovalId || tokenAmt === 0n || insufficient;
 
-  useEffect(() => {
+  // useRefreshOnTx fires on mount AND whenever any tx confirms on chain. The
+  // bus emit waits for the actual block commit (Cosmos DeliverTx or EVM
+  // receipt), so we know the bank query will see post-tx state.
+  useRefreshOnTx(() => {
     if (!address) {
       setBalance(null);
       return;
@@ -39,17 +43,17 @@ export function DepositPanel({ collectionId, mintApprovalId, market, onSuccess }
     getMarketBalances(address, collectionId, depositDenom)
       .then((b) => setBalance(b.usdc))
       .catch(() => setBalance(0n));
-  }, [address, collectionId, depositDenom, tick]);
+  }, [address, collectionId, depositDenom]);
 
   return (
     <Card variant="hero">
       <CardHeader>
         <CardTitle>Deposit</CardTitle>
-        <span className="text-xs text-muted">1 {env.usdcSymbol} → 1 YES + 1 NO</span>
+        <span className="flex items-center gap-1 text-xs text-muted">1 <UsdcSymbol /> → 1 YES + 1 NO</span>
       </CardHeader>
 
       <p className="mb-5 text-sm text-muted">
-        Deposit {env.usdcSymbol} to mint paired YES + NO outcome tokens. Trade either side, or redeem the
+        Deposit <UsdcSymbol /> to mint paired YES + NO outcome tokens. Trade either side, or redeem the
         winner 1:1 after the market settles.
       </p>
 
@@ -90,7 +94,7 @@ export function DepositPanel({ collectionId, mintApprovalId, market, onSuccess }
             return [buildPredictionMarketDepositMsg(address, collectionId, tokenAmt, mintApprovalId)];
           }}
           onSuccess={() => {
-            setTick((t) => t + 1);
+            // tx-bus handles balance refresh automatically; just forward.
             onSuccess?.();
           }}
         />

@@ -2,6 +2,9 @@ import './globals.css';
 import Link from 'next/link';
 import { WalletProvider } from '@/contexts/WalletContext';
 import { ConnectButton } from '@/components/wallet/ConnectButton';
+import { RealtimeWarmup } from '@/components/RealtimeWarmup';
+import { ToastProvider } from '@/components/ui/Toasts';
+import { OrderFillWatcher } from '@/components/OrderFillWatcher';
 
 export const metadata = {
   title: 'BitBadges Prediction Markets',
@@ -13,6 +16,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <WalletProvider>
+          <ToastProvider>
+            <RealtimeWarmup />
+            <OrderFillWatcher />
           <header className="sticky top-0 z-40 border-b border-border bg-bg/80 backdrop-blur-md">
             <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5">
               <div className="flex items-center gap-8">
@@ -40,6 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span className="font-mono text-[10px] opacity-70">v0.1</span>
             </div>
           </footer>
+          </ToastProvider>
         </WalletProvider>
       </body>
     </html>

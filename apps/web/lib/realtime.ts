@@ -20,6 +20,10 @@ type Listener<T = unknown> = (data: T) => void;
 class Realtime {
   private ws: WebSocket | null = null;
   private listeners = new Map<string, Set<Listener>>();
+  /** Last payload seen per channel — handed to new subscribers synchronously
+   *  so route-changes and re-mounts don't flash a skeleton while the WS
+   *  round-trips for the same data again. */
+  private cache = new Map<string, unknown>();
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectDelayMs = 500;
   private intentionallyClosed = false;
@@ -49,6 +53,7 @@ class Realtime {
         return;
       }
       if (!msg.channel) return;
+      this.cache.set(msg.channel, msg.data);
       const set = this.listeners.get(msg.channel);
       if (!set) return;
       for (const fn of set) {
@@ -97,9 +102,18 @@ class Realtime {
     }
     set.add(fn as Listener);
 
+    // Hand the cached value synchronously so a fresh subscriber doesn't have
+    // to wait for the WS round-trip to render. Newly arriving WS messages
+    // overwrite this immediately.
+    const cached = this.cache.get(channel);
+    if (cached !== undefined) {
+      // Defer one microtask so React doesn't see setState in the same render
+      // pass that scheduled the effect.
+      queueMicrotask(() => fn(cached as T));
+    }
+
     if (isNew) {
       if (!this.ws || this.ws.readyState === WebSocket.CLOSED) this.connect();
-      // Send subscribe if already open; otherwise onopen will batch-resubscribe.
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         this.ws.send(JSON.stringify({ action: 'subscribe', channel }));
       }
@@ -117,9 +131,22 @@ class Realtime {
       }
     };
   }
+
+  /** Open the WS eagerly so it's ready by the time the first useRealtime
+   *  hook mounts. Called once from a top-level effect at app load. */
+  warmup(): void {
+    if (typeof window === 'undefined') return;
+    if (!this.ws || this.ws.readyState === WebSocket.CLOSED) this.connect();
+  }
 }
 
 export const realtime = new Realtime();
+
+/** Peek the last-seen payload for a channel without subscribing. Useful for
+ *  seeding React state synchronously on first render. */
+export function getCached<T>(channel: string): T | undefined {
+  return (realtime as any).cache.get(channel) as T | undefined;
+}
 
 // Mirror the aggregator's channel-name helpers so FE producers can't drift.
 export const ch = {

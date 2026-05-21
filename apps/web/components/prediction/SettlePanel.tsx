@@ -5,8 +5,8 @@ import { clsx } from 'clsx';
 import { useWallet } from '@/contexts/WalletContext';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { TxButton } from '@/components/tx/TxButton';
+import { AddressDisplay } from '@/components/ui/AddressDisplay';
 import { buildResolveMsgs, type SettlementApprovals } from '@/lib/prediction-market/sdk';
-import { shortAddr } from '@/lib/format';
 import type { MarketDto } from '@/lib/aggregator';
 
 interface Props {
@@ -36,9 +36,9 @@ export function SettlePanel({ market, approvals, onSuccess }: Props) {
         <p className="text-sm text-muted">
           Only the designated verifier can settle this market.
         </p>
-        <p className="mt-2 text-xs font-mono text-muted">
-          {shortAddr(market.verifierAddress)}
-        </p>
+        <div className="mt-2">
+          <AddressDisplay address={market.verifierAddress} size={14} className="text-muted" />
+        </div>
       </Card>
     );
   }

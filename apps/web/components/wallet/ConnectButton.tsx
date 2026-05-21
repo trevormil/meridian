@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useWallet } from '@/contexts/WalletContext';
 import { Button } from '@/components/ui/Button';
+import { AddressDisplay } from '@/components/ui/AddressDisplay';
+import { WalletLogo } from '@/components/ui/WalletLogo';
 import { shortAddr } from '@/lib/format';
 import { hasKeplr } from '@/lib/chain/keplr';
 import { hasMetaMask } from '@/lib/chain/metamask';
@@ -47,10 +49,13 @@ export function ConnectButton() {
                     w.connectAs?.(p.name);
                   }}
                   data-testid={`test-persona-${p.name}`}
-                  className="rounded px-3 py-1.5 text-left text-sm hover:bg-border"
+                  className="flex items-center gap-2 rounded px-3 py-1.5 text-left text-sm hover:bg-border"
                 >
-                  <div className="font-medium">{p.name}</div>
-                  <div className="font-mono text-[10px] text-muted">{shortAddr(p.address)}</div>
+                  <WalletLogo kind="test" size={20} />
+                  <span>
+                    <span className="block font-medium">{p.name}</span>
+                    <AddressDisplay address={p.address} size={12} copyable={false} className="text-muted" />
+                  </span>
                 </button>
               ))}
             </div>
@@ -86,8 +91,8 @@ export function ConnectButton() {
             className="absolute right-0 top-full mt-1 z-50 flex w-56 flex-col gap-1 rounded-lg border border-border bg-panel-2 p-2 shadow-lift"
           >
             <WalletRow
+              kind="keplr"
               label="Keplr"
-              sub={keplrAvail ? 'Cosmos signing' : 'Not detected'}
               disabled={!keplrAvail}
               onClick={() => {
                 setShowMenu(false);
@@ -96,8 +101,8 @@ export function ConnectButton() {
               testid="connect-keplr"
             />
             <WalletRow
+              kind="metamask"
               label="MetaMask"
-              sub={mmAvail ? 'EVM precompile signing' : 'Not detected'}
               disabled={!mmAvail}
               onClick={() => {
                 setShowMenu(false);
@@ -113,8 +118,10 @@ export function ConnectButton() {
 
   async function copy() {
     if (!w.address) return;
+    // Copy what's visually shown — ETH 0x for MetaMask, bb1 otherwise.
+    const toCopy = w.ethAddress ?? w.address;
     try {
-      await navigator.clipboard.writeText(w.address);
+      await navigator.clipboard.writeText(toCopy);
       setCopied(true);
       setTimeout(() => setCopied(false), 1200);
     } catch {
@@ -123,25 +130,26 @@ export function ConnectButton() {
   }
 
   return (
-    <div className="flex items-center gap-2" data-testid="wallet-connected">
+    <div className="flex h-8 items-center gap-2" data-testid="wallet-connected">
       <button
         type="button"
         onClick={copy}
-        title={`Click to copy ${w.address}`}
+        title={`Click to copy ${w.ethAddress ?? w.address}`}
         data-testid="copy-address"
-        className="group flex items-center gap-2 rounded-lg border border-border bg-panel-2 px-2.5 py-1.5 transition-colors hover:border-border-hi"
+        className="group inline-flex h-8 items-center gap-2 rounded-lg border border-border bg-panel-2 px-2.5 transition-colors hover:border-border-hi"
       >
-        <div className="hidden text-right sm:block">
-          <div className="text-xs font-medium leading-tight text-ink" data-testid="wallet-name">
-            {w.name}
-            {w.kind === 'metamask' && <span className="ml-1 text-[9px] uppercase tracking-wider text-muted">EVM</span>}
-          </div>
-          <div className="font-mono text-[10px] leading-tight text-muted" data-testid="wallet-address-short">
-            {shortAddr(w.address)}
-          </div>
-        </div>
+        <WalletLogo kind={w.kind} size={16} className="shrink-0 align-middle" />
+        <span data-testid="wallet-address-short" data-wallet-name={w.name ?? ''} className="inline-flex items-center">
+          <AddressDisplay
+            address={w.address}
+            ethAddress={w.ethAddress}
+            size={14}
+            copyable={false}
+            className="text-ink"
+          />
+        </span>
         <span
-          className={`text-xs ${copied ? 'text-yes' : 'text-muted group-hover:text-ink'}`}
+          className={`inline-block w-3 text-center text-[10px] ${copied ? 'text-yes' : 'text-muted group-hover:text-ink'}`}
           aria-live="polite"
         >
           {copied ? '✓' : '📋'}
@@ -155,14 +163,14 @@ export function ConnectButton() {
 }
 
 function WalletRow({
+  kind,
   label,
-  sub,
   disabled,
   onClick,
   testid,
 }: {
+  kind: 'keplr' | 'metamask';
   label: string;
-  sub: string;
   disabled?: boolean;
   onClick: () => void;
   testid: string;
@@ -173,10 +181,10 @@ function WalletRow({
       onClick={onClick}
       disabled={disabled}
       data-testid={testid}
-      className="flex items-center justify-between rounded px-3 py-1.5 text-left text-sm hover:bg-border disabled:cursor-not-allowed disabled:opacity-50"
+      className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm hover:bg-border disabled:cursor-not-allowed disabled:opacity-50"
     >
+      <WalletLogo kind={kind} size={20} />
       <span className="font-medium">{label}</span>
-      <span className="text-[10px] text-muted">{sub}</span>
     </button>
   );
 }

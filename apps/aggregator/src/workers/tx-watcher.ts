@@ -1,4 +1,5 @@
 import { Tendermint37Client } from '@cosmjs/tendermint-rpc';
+import { convertToBitBadgesAddress } from 'bitbadges';
 import { env } from '../env.js';
 import { getDb } from '../db/index.js';
 import { getCollection } from '../chain/lcd.js';
@@ -101,6 +102,49 @@ async function ingestEvents(events: any[]): Promise<void> {
   // wallets that aren't yet in our DB.
   const addresses = extractAddresses(events);
   if (addresses.size > 0) await refreshIntentsFor(addresses);
+
+  // 4) Newly-created markets — covers BOTH Cosmos-signed Msg... and
+  // EVM-signed MsgEthereumTx wrapping a precompile call. The chain emits the
+  // SAME `message` (and `indexer`) events for both paths with attributes
+  // {module: 'tokenization', msg_type: 'universal_update_collection', collection_id}.
+  // Without this, a brand-new collection only gets picked up on the 15s
+  // bootstrap loop — wiring it inline makes it appear on the FE in ~1s.
+  const newCollectionIds = extractNewCollectionIds(events);
+  for (const cid of newCollectionIds) {
+    if (isKnownMarket(cid)) continue;
+    try {
+      const c = await getCollection(cid);
+      if (c) upsertMarket(c); // upsertMarket no-ops for non-prediction-markets via bootstrap's own filter on next sweep
+    } catch {
+      // transient — bootstrap loop will catch it on the next 15s sweep
+    }
+  }
+}
+
+/**
+ * Pull `collection_id` out of any `message` / `indexer` event whose
+ * `msg_type` indicates a collection mutation. Covers create + universal
+ * update + delete on both Cosmos and EVM-wrapped paths.
+ */
+function extractNewCollectionIds(events: any[]): Set<string> {
+  const out = new Set<string>();
+  const MUTATING = new Set([
+    'universal_update_collection',
+    'create_collection',
+    'update_collection',
+    'set_collection_metadata',
+    'set_collection_approvals',
+    'set_standards',
+  ]);
+  for (const e of events ?? []) {
+    if (e.type !== 'message' && e.type !== 'indexer') continue;
+    const attrs = Object.fromEntries((e.attributes ?? []).map((a: any) => [a.key, a.value]));
+    if (attrs.module !== 'tokenization') continue;
+    if (!MUTATING.has(attrs.msg_type)) continue;
+    const cid = attrs.collection_id || attrs.collectionId;
+    if (cid && /^\d+$/.test(String(cid))) out.add(String(cid));
+  }
+  return out;
 }
 
 function recordFill(f: UsedApprovalDetails): void {
@@ -118,11 +162,23 @@ function isKnownMarket(collectionId: string): boolean {
 }
 
 function extractAddresses(events: any[]): Set<string> {
+  // Scan attribute values for both bb1 (cosmos) and 0x (EVM) addresses. EVM
+  // addresses get converted to their bb1 form via the SDK so chain-side
+  // lookups (intents, balances) work — all on-chain accounting is bb1-keyed.
   const out = new Set<string>();
+  const ethAddrs = new Set<string>();
   for (const e of events ?? []) {
     for (const a of e.attributes ?? []) {
-      const v = typeof a.value === 'string' ? a.value : '';
-      if (v.startsWith('bb1') && v.length >= 30) out.add(v.replace(/^"|"$/g, ''));
+      const v = typeof a.value === 'string' ? a.value.replace(/^"|"$/g, '') : '';
+      if (v.startsWith('bb1') && v.length >= 30) out.add(v);
+      else if (/^0x[0-9a-fA-F]{40}$/.test(v)) ethAddrs.add(v);
+    }
+  }
+  for (const eth of ethAddrs) {
+    try {
+      out.add(convertToBitBadgesAddress(eth));
+    } catch {
+      // unparseable — skip
     }
   }
   return out;

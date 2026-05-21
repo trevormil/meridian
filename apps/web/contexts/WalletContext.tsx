@@ -2,8 +2,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { connectKeplr, hasKeplr } from '@/lib/chain/keplr';
-import { connectMetaMask, hasMetaMask, ethToBb } from '@/lib/chain/metamask';
-import { clearSigningClient, setSignMode, type SignMode } from '@/lib/chain/broadcast';
+import { connectMetaMask, hasMetaMask, unpinMetaMaskProvider } from '@/lib/chain/metamask';
+import { clearSigningClient, setSignMode, setBroadcastAddress, type SignMode } from '@/lib/chain/broadcast';
 import {
   isTestMode,
   loadTestPersonas,
@@ -60,6 +60,13 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const testPersonas = useMemo(() => (testMode ? loadTestPersonas() : []), [testMode]);
 
   const setMode = (m: SignMode) => setSignMode(m);
+
+  // Keep broadcast.ts's address pointer in sync — used by the post-tx intent
+  // re-sync so the aggregator picks up new/cancelled/filled orders even if
+  // its live WS event stream missed the tx.
+  useEffect(() => {
+    setBroadcastAddress(state.address);
+  }, [state.address]);
 
   const connectAsPersona = useCallback(async (personaName: string) => {
     setState((s) => ({ ...s, connecting: true, error: null }));
@@ -134,6 +141,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const disconnect = useCallback(() => {
     clearSigningClient();
     setActivePersonaName(null);
+    unpinMetaMaskProvider();
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(STORAGE_PERSONA_KEY);
     localStorage.removeItem(STORAGE_KIND_KEY);
@@ -152,18 +160,19 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     if (savedKind === 'metamask' && hasMetaMask()) {
-      // Re-derive bb1 from current eth account silently. Skip prompts.
-      (async () => {
-        try {
-          const accs: string[] = await (window as any).ethereum.request({ method: 'eth_accounts' });
-          if (!accs?.[0]) return;
-          const bbAddress = await ethToBb(accs[0]);
-          setMode('metamask');
-          setState({ ...EMPTY, address: bbAddress, ethAddress: accs[0], name: 'MetaMask', kind: 'metamask' });
-        } catch {
-          // user not connected — keep disconnected state
-        }
-      })();
+      // NOTE: a stale saved addr from before the EIP-6963 fix could be a
+      // 0x-derived bb1 from the WRONG wallet (Coinbase etc). The doConnect
+      // below re-derives from MetaMask specifically and overwrites the saved
+      // bb1 — that catches users with a stored, mis-derived address.
+      // Silent reconnect — go through the full connect flow (which uses mipd
+      // to pick the MetaMask provider specifically, not whichever extension
+      // currently hijacks window.ethereum). The popup is suppressed because
+      // eth_accounts is non-interactive when the site is already authorized.
+      doConnectMetaMask().catch(() => {
+        // User revoked access in MetaMask — clear stale state.
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(STORAGE_KIND_KEY);
+      });
       return;
     }
     if (hasKeplr()) doConnectKeplr().catch(() => {});

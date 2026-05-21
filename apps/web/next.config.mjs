@@ -2,6 +2,19 @@
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['bitbadges'],
+
+  // Turbopack config (Next 14: `next dev --turbo` only; build still uses webpack).
+  // The runtime `window.require` shim in lib/chain/test-wallet.ts handles the
+  // SDK's literal `require('crypto')` regardless of bundler, but alias here for
+  // any static resolve attempts Turbopack does at compile time.
+  experimental: {
+    turbo: {
+      resolveAlias: {
+        crypto: 'crypto-browserify',
+      },
+    },
+  },
+
   webpack: (config, { isServer, webpack }) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,

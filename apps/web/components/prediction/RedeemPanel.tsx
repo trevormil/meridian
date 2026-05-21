@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useWallet } from '@/contexts/WalletContext';
+import { useRefreshOnTx } from '@/lib/tx-bus';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { CoinDisplay } from '@/components/ui/CoinDisplay';
+import { UsdcSymbol } from '@/components/ui/UsdcSymbol';
 import { TxButton } from '@/components/tx/TxButton';
 import { buildPredictionMarketRedeemTx, type SettlementApprovals } from '@/lib/prediction-market/sdk';
 import { getMarketBalances } from '@/lib/prediction-market/balances';
@@ -19,9 +21,9 @@ interface Props {
 export function RedeemPanel({ market, approvals, onSuccess }: Props) {
   const { address } = useWallet();
   const [bal, setBal] = useState<{ yes: bigint; no: bigint } | null>(null);
-  const [tick, setTick] = useState(0);
 
-  useEffect(() => {
+  // Auto-refresh after any tx (deposit, fill, redeem) — see lib/tx-bus.
+  useRefreshOnTx(() => {
     if (!address) {
       setBal(null);
       return;
@@ -29,7 +31,7 @@ export function RedeemPanel({ market, approvals, onSuccess }: Props) {
     getMarketBalances(address, market.collectionId, market.depositDenom ?? env.usdcDenom)
       .then((b) => setBal({ yes: b.yes, no: b.no }))
       .catch(() => setBal({ yes: 0n, no: 0n }));
-  }, [address, market.collectionId, market.depositDenom, tick]);
+  }, [address, market.collectionId, market.depositDenom]);
 
   const state = market.status === 'resolved-yes'
     ? ('yes-wins' as const)
@@ -75,11 +77,12 @@ export function RedeemPanel({ market, approvals, onSuccess }: Props) {
     push: 'Pushed — claim refund',
   }[state];
 
-  const stateDesc = {
-    active: 'Burn one YES + one NO together to reclaim 1 ' + env.usdcSymbol + ' each pair.',
-    'yes-wins': 'YES tokens are redeemable 1:1 for ' + env.usdcSymbol + '. NO tokens are worthless but should be burned to clean up.',
-    'no-wins': 'NO tokens are redeemable 1:1 for ' + env.usdcSymbol + '. YES tokens are worthless but should be burned to clean up.',
-    push: 'Burn YES and NO separately, each redeems for 0.5 ' + env.usdcSymbol + '.',
+  const sym = <UsdcSymbol />;
+  const stateDesc: React.ReactNode = {
+    active: <>Burn one YES + one NO together to reclaim 1 {sym} each pair.</>,
+    'yes-wins': <>YES tokens are redeemable 1:1 for {sym}. NO tokens are worthless but should be burned to clean up.</>,
+    'no-wins': <>NO tokens are redeemable 1:1 for {sym}. YES tokens are worthless but should be burned to clean up.</>,
+    push: <>Burn YES and NO separately, each redeems for 0.5 {sym}.</>,
   }[state];
 
   return (
@@ -122,7 +125,7 @@ export function RedeemPanel({ market, approvals, onSuccess }: Props) {
             disabled={!bal || (state === 'active' ? pair === 0n : bal.yes === 0n && bal.no === 0n)}
             build={buildMsgs}
             onSuccess={() => {
-              setTick((t) => t + 1);
+              // tx-bus handles balance refresh automatically; just forward.
               onSuccess?.();
             }}
           />

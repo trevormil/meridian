@@ -5,8 +5,10 @@
   "workspaces": ["apps/*"],
   "scripts": {
     "dev:web": "cd apps/web && bun run dev",
+    "dev:web:turbo": "cd apps/web && bun run dev:turbo",
     "dev:aggregator": "cd apps/aggregator && bun run dev",
     "dev": "concurrently -n web,agg -c blue,green \"bun run dev:web\" \"bun run dev:aggregator\"",
+    "dev:turbo": "concurrently -n web,agg -c blue,green \"bun run dev:web:turbo\" \"bun run dev:aggregator\"",
     "dev:fresh": "bun run wipe && bun run dev",
     "wipe": "cd apps/aggregator && bun run wipe",
     "reset-cursor": "cd apps/aggregator && bun run reset-cursor",

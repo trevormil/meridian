@@ -144,13 +144,23 @@ export interface CastVote {
 }
 
 export function parseCastVotes(events: RawEvent[]): CastVote[] {
+  // Accept BOTH `message` (native Cosmos signing path) and `indexer`
+  // (EVM-wrapped MsgEthereumTx path — the EVM module strips inner message
+  // events from the result, but the chain re-emits them as `indexer` events
+  // so consumers like this aggregator and bitbadges-indexer can still see
+  // them). De-dup by (collectionId, approvalId, voter, msgIndex) so a
+  // single vote isn't counted twice when both events fire.
   const out: CastVote[] = [];
+  const seen = new Set<string>();
   for (const e of events ?? []) {
-    if (e.type !== 'message') continue;
+    if (e.type !== 'message' && e.type !== 'indexer') continue;
     const a = attrs(e);
     if (a.module !== 'tokenization') continue;
     if (a.msg_type !== 'cast_vote') continue;
     if (!a.collection_id || !a.approval_id) continue;
+    const dedupKey = `${a.collection_id}|${a.approval_id}|${a.voter ?? ''}|${a.msg_index ?? ''}`;
+    if (seen.has(dedupKey)) continue;
+    seen.add(dedupKey);
     out.push({
       collectionId: a.collection_id,
       approvalId: a.approval_id,
