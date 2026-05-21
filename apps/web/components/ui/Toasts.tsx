@@ -58,7 +58,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <Ctx.Provider value={api}>
       {children}
-      <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-full max-w-sm flex-col gap-2">
+      <div className="pointer-events-none fixed right-4 top-20 z-[60] flex w-full max-w-sm flex-col gap-2">
         {toasts.map((t) => (
           <ToastItem key={t.id} toast={t} onClose={() => dismiss(t.id)} />
         ))}
@@ -68,32 +68,43 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 }
 
 function ToastItem({ toast: t, onClose }: { toast: Toast; onClose: () => void }) {
+  // Solid fills (no opaque-tint trick) so the toast pops over content. Each
+  // tone gets a 2px accent strip on the left edge — same vocabulary as the
+  // card-accent pattern.
   const tone = {
-    success: 'border-yes/40 bg-yes/10 text-yes',
-    error: 'border-no/40 bg-no/10 text-no',
-    pending: 'border-accent/40 bg-accent/10 text-accent',
-    info: 'border-border bg-panel-2 text-ink',
+    success: 'bg-panel border-yes/60 border-l-yes',
+    error: 'bg-panel border-no/60 border-l-no',
+    pending: 'bg-panel border-gold/60 border-l-gold',
+    info: 'bg-panel border-border-hi border-l-ink-dim',
+  }[t.kind];
+  const iconColor = {
+    success: 'text-yes-bright',
+    error: 'text-no-bright',
+    pending: 'text-gold-bright',
+    info: 'text-ink-dim',
   }[t.kind];
   const icon = { success: '✓', error: '✕', pending: '◐', info: '·' }[t.kind];
   return (
     <div
       role="status"
       className={clsx(
-        'pointer-events-auto flex items-start gap-3 rounded-lg border p-3 shadow-lift animate-fade-in',
+        'pointer-events-auto flex items-start gap-3 rounded border border-l-2 px-4 py-3 shadow-lift animate-slide-up backdrop-blur-md',
         tone,
       )}
     >
-      <span className="mt-[1px] text-base leading-none" aria-hidden>
+      <span className={clsx('mt-[2px] text-base leading-none', iconColor)} aria-hidden>
         {icon}
       </span>
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-medium leading-tight">{t.title}</div>
-        {t.detail && <div className="mt-1 text-xs leading-snug opacity-80">{t.detail}</div>}
+        <div className="text-sm font-semibold leading-tight text-ink">{t.title}</div>
+        {t.detail && (
+          <div className="mt-1 text-xs leading-snug text-ink-dim">{t.detail}</div>
+        )}
         {t.txHash && <TxHashLink hash={t.txHash} />}
       </div>
       <button
         onClick={onClose}
-        className="text-base leading-none opacity-60 transition-opacity hover:opacity-100"
+        className="text-base leading-none text-muted transition-colors hover:text-ink"
         aria-label="dismiss"
       >
         ×

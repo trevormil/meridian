@@ -155,4 +155,5 @@ export const ch = {
   intents: (id: string) => `intents:${id}`,
   intentsOwner: (addr: string) => `intents-owner:${addr}`,
   candle: (id: string) => `candle:${id}`,
+  fills: (id: string) => `fills:${id}`,
 };

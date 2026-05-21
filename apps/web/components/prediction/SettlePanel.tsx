@@ -66,56 +66,68 @@ export function SettlePanel({ market, approvals, onSuccess }: Props) {
     <Card variant="hero">
       <CardHeader>
         <CardTitle>Cast verifier vote</CardTitle>
-        <span className="rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent">
+        <span className="inline-flex items-center gap-1 rounded-sm border border-gold/40 bg-gold/10 px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-gold">
           Verifier
         </span>
       </CardHeader>
 
-      <p className="mb-4 text-sm text-muted">
-        You're the designated verifier for this market. Cast a vote to unlock the
-        corresponding redemption path. <span className="text-no">Irreversible.</span>
+      <p className="mb-4 text-xs leading-relaxed text-faint">
+        Settle this market. Cast a vote to unlock the corresponding redemption path.
       </p>
 
-      <div className="mb-4 space-y-2">
+      <div className="mb-4 rounded border border-no/30 bg-no/5 px-3 py-2 text-[11px] leading-relaxed text-no-bright">
+        ⚠ Irreversible — once cast, the vote cannot be undone.
+      </div>
+
+      <div className="mb-5 space-y-2">
         {outcomes.map((o) => (
           <button
             key={o.key}
             onClick={() => setOutcome(o.key)}
             className={clsx(
-              'flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left transition-all',
+              'flex w-full items-center justify-between rounded border px-4 py-3 text-left transition-all',
               outcome === o.key
                 ? o.variant === 'yes'
                   ? 'border-yes bg-yes-gradient'
                   : o.variant === 'no'
                     ? 'border-no bg-no-gradient'
-                    : 'border-accent bg-accent/10'
-                : 'border-border bg-bg/40 hover:border-border-hi',
+                    : 'border-gold bg-gold/10'
+                : 'border-border bg-bg-deep hover:border-border-hi',
             )}
           >
             <div>
-              <div className={clsx(
-                'text-sm font-semibold',
-                o.variant === 'yes' ? 'text-yes' : o.variant === 'no' ? 'text-no' : 'text-accent',
-              )}>
+              <div
+                className={clsx(
+                  'text-sm font-semibold',
+                  o.variant === 'yes'
+                    ? 'text-yes-bright'
+                    : o.variant === 'no'
+                      ? 'text-no-bright'
+                      : 'text-gold',
+                )}
+              >
                 {o.label}
               </div>
-              <div className="text-xs text-muted">{o.sub}</div>
+              <div className="mt-0.5 text-[11px] text-muted">{o.sub}</div>
             </div>
-            <div className={clsx(
-              'h-4 w-4 rounded-full border-2',
-              outcome === o.key
-                ? o.variant === 'yes'
-                  ? 'border-yes bg-yes'
-                  : o.variant === 'no'
-                    ? 'border-no bg-no'
-                    : 'border-accent bg-accent'
-                : 'border-border',
-            )} />
+            <div
+              className={clsx(
+                'h-4 w-4 shrink-0 rounded-full border-2 transition-colors',
+                outcome === o.key
+                  ? o.variant === 'yes'
+                    ? 'border-yes bg-yes'
+                    : o.variant === 'no'
+                      ? 'border-no bg-no'
+                      : 'border-gold bg-gold'
+                  : 'border-border-bright',
+              )}
+            />
           </button>
         ))}
       </div>
 
       <TxButton
+        fullWidth
         label={`Resolve as ${outcome.toUpperCase()}`}
         variant={outcome === 'yes' ? 'yes' : outcome === 'no' ? 'no' : 'primary'}
         build={() => {

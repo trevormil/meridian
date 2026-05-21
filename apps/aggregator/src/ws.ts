@@ -6,6 +6,7 @@ import {
   snapshotIntents,
   snapshotIntentsOwner,
   snapshotCandle,
+  snapshotFills,
 } from './snapshots.js';
 
 /**
@@ -91,5 +92,6 @@ function initialSnapshot(channel: string): unknown {
   if (channel.startsWith('intents:')) return snapshotIntents(channel.slice('intents:'.length));
   if (channel.startsWith('intents-owner:')) return snapshotIntentsOwner(channel.slice('intents-owner:'.length));
   if (channel.startsWith('candle:')) return snapshotCandle(channel.slice('candle:'.length));
+  if (channel.startsWith('fills:')) return snapshotFills(channel.slice('fills:'.length));
   return undefined;
 }

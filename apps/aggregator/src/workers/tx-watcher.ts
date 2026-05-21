@@ -17,6 +17,8 @@ import {
 } from '../chain/events.js';
 import { recordVote } from '../db/votes.js';
 import { refreshMarketStatusFromVotes } from './status-updater.js';
+import { publish, channel } from '../pubsub.js';
+import { snapshotFills } from '../snapshots.js';
 
 /**
  * Tx watcher with two paths:
@@ -152,8 +154,43 @@ function recordFill(f: UsedApprovalDetails): void {
   if (price === null) return; // mint / pair-redeem / fee-only — skip
   recordCandle(f.collectionId, price, 1 - price);
   updateMarketPrice(f.collectionId, price, 1 - price);
-  const side = f.balances[0]?.tokenIds?.[0]?.start === '1' ? 'YES' : 'NO';
-  console.log(`[tx-watcher] fill #${f.collectionId} ${side} ${f.balances[0]?.amount} → YES=${price.toFixed(4)} (${f.from.slice(0, 10)}…→${f.to.slice(0, 10)}…)`);
+  const tokenStart = f.balances[0]?.tokenIds?.[0]?.start;
+  const side = tokenStart === '1' ? 'yes' : 'no';
+  const tokenAmount = f.balances[0]?.amount ?? '0';
+  // First non-protocol-fee coin transfer = the USDC leg of the trade.
+  const usdc = f.coinTransfers.find((c) => !c.IsProtocolFee);
+  const coinAmount = usdc?.Amount ?? '0';
+  const approvalUsed = f.approvalsUsed.find((a) => a.ApprovalLevel !== 'collection') ?? f.approvalsUsed[0];
+
+  // Materialize one row per fill. PK on (collection, approval_id, approver)
+  // makes backfill replays idempotent.
+  if (approvalUsed) {
+    getDb()
+      .prepare(
+        `INSERT OR IGNORE INTO fills
+           (collection_id, approval_id, approver_address, ts, side, token_amount, coin_amount, price, from_address, to_address)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        f.collectionId,
+        approvalUsed.ApprovalId,
+        approvalUsed.ApproverAddress,
+        Date.now(),
+        side,
+        tokenAmount,
+        coinAmount,
+        price,
+        f.from,
+        f.to,
+      );
+    // Push to the `fills:{id}` realtime channel so the FE activity tab
+    // appends without polling.
+    publish(channel.fills(f.collectionId), snapshotFills(f.collectionId));
+  }
+
+  console.log(
+    `[tx-watcher] fill #${f.collectionId} ${side.toUpperCase()} ${tokenAmount} → YES=${price.toFixed(4)} (${f.from.slice(0, 10)}…→${f.to.slice(0, 10)}…)`,
+  );
 }
 
 function isKnownMarket(collectionId: string): boolean {

@@ -94,9 +94,9 @@ export function MarketCard({ market }: Props) {
         {/* Probability bar — the visual anchor */}
         <div className="space-y-2">
           <div className="flex items-baseline justify-between">
-            <span className="eyebrow">Implied YES</span>
+            <span className="eyebrow">YES</span>
             <span className="font-mono text-2xl font-semibold text-yes-bright">
-              {yesPct}<span className="text-base text-yes/60">¢</span>
+              {yesPct}<span className="text-base text-yes/60">%</span>
             </span>
           </div>
           <ProbabilityBar yesPrice={market.yesPrice} noPrice={market.noPrice} size="md" />

@@ -7,6 +7,7 @@ import { searchHistoricalFills, searchHistoricalVotes, impliedYesPrice } from '.
 import { recordCandle, updateMarketPrice } from '../db/candles.js';
 import { recordVote } from '../db/votes.js';
 import { refreshMarketStatusFromVotes } from '../workers/status-updater.js';
+import { snapshotFills } from '../snapshots.js';
 
 export const predictions = new Hono();
 
@@ -115,6 +116,13 @@ predictions.get('/predictions/:collectionId/prices', (c) => {
       no: rows.map((r) => ({ time: r.ts, value: r.no_price })),
     },
   });
+});
+
+/** Fill (trade) activity per market — most recent first. Backs the Activity tab. */
+predictions.get('/predictions/:collectionId/fills', (c) => {
+  const id = c.req.param('collectionId');
+  const limit = Math.min(500, Number(c.req.query('limit') ?? '100'));
+  return c.json({ fills: snapshotFills(id, limit) });
 });
 
 predictions.get('/intents', async (c) => {

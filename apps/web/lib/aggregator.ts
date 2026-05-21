@@ -41,6 +41,20 @@ export interface IntentDto {
   isExpired: boolean;
 }
 
+export interface FillDto {
+  collectionId: string;
+  approvalId: string;
+  approverAddress: string;
+  ts: number;
+  side: 'yes' | 'no';
+  tokenAmount: string;
+  coinAmount: string;
+  /** Implied YES probability 0..1 at the moment of the fill. */
+  price: number;
+  fromAddress: string;
+  toAddress: string;
+}
+
 async function get<T>(path: string): Promise<T> {
   const r = await fetch(`${env.aggregatorUrl}/api/v0${path}`, { cache: 'no-store' });
   if (!r.ok) throw new Error(`aggregator ${r.status}: ${path}`);
@@ -76,4 +90,6 @@ export const aggregator = {
   // the live tx-watcher in case the WS event stream missed the tx.
   refreshFills: (id: string) =>
     post<{ ok: boolean; fills: number; votes: number }>(`/predictions/${id}/refresh-fills`),
+  listFills: (id: string, limit = 100) =>
+    get<{ fills: FillDto[] }>(`/predictions/${id}/fills?limit=${limit}`).then((r) => r.fills),
 };

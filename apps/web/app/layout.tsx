@@ -8,6 +8,7 @@ import { OrderFillWatcher } from '@/components/OrderFillWatcher';
 import { BrandLogo } from '@/components/BrandLogo';
 import { TradingDayBar } from '@/components/TradingDayBar';
 import { NavLink } from '@/components/NavLink';
+import { MarketStatusPill } from '@/components/MarketStatusPill';
 
 /**
  * Fraunces — Google's contemporary serif. Used sparingly for marquee
@@ -49,38 +50,142 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 fill up to "now", open + close ticks. Atmosphere, not chrome. */}
             <TradingDayBar />
 
-            <header className="sticky top-0 z-40 border-b border-border bg-bg/85 backdrop-blur-xl">
-              <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-4">
-                <div className="flex items-center gap-10">
+            <header className="sticky top-0 z-40 border-b border-border bg-bg/90 backdrop-blur-xl">
+              <div className="mx-auto flex h-14 max-w-7xl items-center gap-6 px-6">
+                {/* Left cluster — brand + ambient status */}
+                <div className="flex items-center gap-4">
                   <BrandLogo />
-                  <nav className="hidden items-center gap-1 sm:flex">
-                    <NavLink href="/">Markets</NavLink>
-                    <NavLink href="/portfolio">Portfolio</NavLink>
-                    <NavLink href="/create">Create</NavLink>
-                  </nav>
+                  <span className="hidden h-5 w-px bg-border lg:inline-block" />
+                  <span className="hidden lg:inline-block">
+                    <MarketStatusPill />
+                  </span>
                 </div>
-                <ConnectButton />
+
+                {/* Center nav — flexes to fill */}
+                <nav className="hidden flex-1 items-center justify-center gap-1 sm:flex">
+                  <NavLink href="/">Markets</NavLink>
+                  <NavLink href="/portfolio">Portfolio</NavLink>
+                  <NavLink href="/create">Create</NavLink>
+                </nav>
+
+                {/* Right cluster — testnet badge + connect */}
+                <div className="ml-auto flex items-center gap-3 sm:ml-0">
+                  <span className="hidden items-center gap-1.5 rounded-sm border border-amber/30 bg-amber/5 px-2 py-1 md:inline-flex">
+                    <span className="h-1 w-1 rounded-full bg-amber" />
+                    <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-amber">
+                      Testnet
+                    </span>
+                  </span>
+                  <span className="h-5 w-px bg-border" />
+                  <ConnectButton />
+                </div>
               </div>
             </header>
 
             <main className="mx-auto max-w-7xl px-6 pb-24 pt-10">{children}</main>
 
-            <footer className="mx-auto mt-24 max-w-7xl border-t border-border px-6 py-8">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="eyebrow">Meridian</span>
-                  <span className="text-muted text-xs">
-                    Binary stock outcome markets · powered by BitBadges chain
-                  </span>
-                </div>
-                <span className="font-mono text-[10px] tracking-[0.14em] text-faint">
-                  V0.1 · TESTNET
-                </span>
-              </div>
-            </footer>
+            <Footer />
           </ToastProvider>
         </WalletProvider>
       </body>
     </html>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="mt-32 border-t border-border bg-gradient-to-b from-bg to-panel">
+      <div className="mx-auto max-w-7xl px-6 py-14">
+        <div className="grid gap-12 md:grid-cols-12">
+          <div className="md:col-span-5">
+            <div className="flex items-center gap-3">
+              <div className="relative inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border border-border-hi bg-bg shadow-[0_0_24px_-8px_rgba(232,177,74,0.4)]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/meridian-logo.png"
+                  alt=""
+                  width={40}
+                  height={40}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <span className="font-display text-2xl font-semibold tracking-marquee text-ink">
+                Meridian
+              </span>
+            </div>
+            <p className="mt-5 max-w-sm text-sm leading-relaxed text-ink-dim">
+              Daily binary outcome markets on MAG7 stock closing prices.
+              On-chain order book, oracle-settled, $1 USDC invariant. No custody, no KYC.
+            </p>
+            <div className="mt-6 flex items-center gap-2 text-xs text-faint">
+              <span className="eyebrow">Powered by</span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/chains/bitbadges.png"
+                alt=""
+                width={14}
+                height={14}
+                className="h-3.5 w-3.5 opacity-70"
+              />
+              <span className="font-mono uppercase tracking-[0.14em]">BitBadges chain</span>
+            </div>
+          </div>
+
+          <div className="md:col-span-7 md:flex md:justify-end">
+            <FooterColumn
+              title="Product"
+              links={[
+                { label: 'Markets', href: '/' },
+                { label: 'Portfolio', href: '/portfolio' },
+                { label: 'Create', href: '/create' },
+              ]}
+            />
+          </div>
+        </div>
+
+        <div className="mt-14 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6">
+          <span className="font-mono text-[10px] tracking-[0.14em] text-faint">
+            V0.1 · TESTNET · 2026
+          </span>
+          <span className="text-[10px] text-faint">
+            Not financial advice. Testnet build · no real funds.
+          </span>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+function FooterColumn({
+  title,
+  links,
+  inert,
+}: {
+  title: string;
+  links: { label: string; href: string; external?: boolean }[];
+  inert?: boolean;
+}) {
+  return (
+    <div className="md:col-span-2">
+      <h4 className="eyebrow">{title}</h4>
+      <ul className="mt-4 space-y-2.5">
+        {links.map((l) => (
+          <li key={l.label}>
+            {inert ? (
+              <span className="font-mono text-xs leading-relaxed text-muted">{l.label}</span>
+            ) : (
+              <a
+                href={l.href}
+                target={l.external ? '_blank' : undefined}
+                rel={l.external ? 'noreferrer noopener' : undefined}
+                className="text-xs leading-relaxed text-ink-dim transition-colors hover:text-gold"
+              >
+                {l.label}
+              </a>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

@@ -13,6 +13,7 @@ interface Props {
   disabled?: boolean;
   variant?: 'primary' | 'secondary' | 'yes' | 'no' | 'danger';
   size?: 'sm' | 'md' | 'lg';
+  fullWidth?: boolean;
 }
 
 type Phase = 'idle' | 'simulating' | 'signing' | 'done';
@@ -27,7 +28,15 @@ type Phase = 'idle' | 'simulating' | 'signing' | 'done';
  * The button label still cycles (Simulating… / Awaiting signature… / final label)
  * so the user sees in-progress state even before the toast lands.
  */
-export function TxButton({ label, build, onSuccess, disabled, variant = 'primary', size = 'md' }: Props) {
+export function TxButton({
+  label,
+  build,
+  onSuccess,
+  disabled,
+  variant = 'primary',
+  size = 'md',
+  fullWidth,
+}: Props) {
   const [phase, setPhase] = useState<Phase>('idle');
   const toast = useToast();
 
@@ -77,7 +86,14 @@ export function TxButton({ label, build, onSuccess, disabled, variant = 'primary
     label;
 
   return (
-    <Button onClick={run} disabled={disabled || loading} loading={loading} variant={variant} size={size}>
+    <Button
+      onClick={run}
+      disabled={disabled || loading}
+      loading={loading}
+      variant={variant}
+      size={size}
+      fullWidth={fullWidth}
+    >
       {btnLabel}
     </Button>
   );

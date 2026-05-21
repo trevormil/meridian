@@ -113,17 +113,27 @@ export function impliedYesPrice(event: UsedApprovalDetails): number | null {
   if (sawYes && sawNo) return null; // paired transfer — not a single-side trade
   if (!sawYes && !sawNo) return null;
 
-  // Sum non-fee coin transfers. Protocol fees skew the implied price.
-  let coinAmount = 0n;
+  // Collect non-fee coin transfers. A normal single-approval fill emits ONE;
+  // a cross-match (arb bot fills both sides at once) emits TWO — one from
+  // each approval's `coinTransfers` block. Summing both gives ratio > 1 (the
+  // spread is double-counted), so we take the AVERAGE per-leg price instead.
+  // That value is the trade "mid" and is what the chart should show.
+  const legs: bigint[] = [];
   for (const ct of event.coinTransfers) {
     if (ct.IsProtocolFee) continue;
-    coinAmount += BigInt(ct.Amount);
+    const amt = BigInt(ct.Amount);
+    if (amt > 0n) legs.push(amt);
   }
-  if (coinAmount === 0n) return null;
+  if (legs.length === 0) return null;
 
-  const ratio = Number(coinAmount) / Number(tokenAmount);
-  if (!Number.isFinite(ratio) || ratio < 0 || ratio > 1) return null;
-  return sawYes ? ratio : 1 - ratio;
+  let coinAmount = 0n;
+  for (const l of legs) coinAmount += l;
+  // Per-leg average = total USDC / leg count / token amount per leg.
+  // Token amount per leg == tokenAmount (each leg transfers the SAME token
+  // quantity, just at a different price).
+  const avgPerLeg = Number(coinAmount) / legs.length / Number(tokenAmount);
+  if (!Number.isFinite(avgPerLeg) || avgPerLeg < 0 || avgPerLeg > 1) return null;
+  return sawYes ? avgPerLeg : 1 - avgPerLeg;
 }
 
 /**

@@ -39,13 +39,15 @@ const config: Config = {
         'gold-deep': '#8A6A28',
         amber: '#E08A2A',
 
-        // ── Outcomes ────────────────────────────────────────────────────
-        yes: '#C9A85A',
-        'yes-bright': '#E8C97A',
-        'yes-soft': 'rgba(201, 168, 90, 0.10)',
-        no: '#D93826',
-        'no-bright': '#F25241',
-        'no-soft': 'rgba(217, 56, 38, 0.10)',
+        // ── Outcomes — green/red. Trader-natural; not from logo. ────────
+        // The logo's gold/crimson stays reserved for brand chrome + CTAs;
+        // outcome colors follow the prediction-market convention.
+        yes: '#22C55E',
+        'yes-bright': '#4ADE80',
+        'yes-soft': 'rgba(34, 197, 94, 0.10)',
+        no: '#EF4444',
+        'no-bright': '#F87171',
+        'no-soft': 'rgba(239, 68, 68, 0.10)',
 
         // ── Legacy aliases (older components still reference these) ─────
         accent: '#E8B14A',
@@ -62,9 +64,9 @@ const config: Config = {
         'hero-radial':
           'radial-gradient(ellipse 60% 40% at top, rgba(232,177,74,0.10), transparent 60%)',
         'yes-gradient':
-          'linear-gradient(135deg, rgba(201,168,90,0.18), rgba(201,168,90,0.04))',
+          'linear-gradient(135deg, rgba(34,197,94,0.18), rgba(34,197,94,0.04))',
         'no-gradient':
-          'linear-gradient(135deg, rgba(217,56,38,0.18), rgba(217,56,38,0.04))',
+          'linear-gradient(135deg, rgba(239,68,68,0.18), rgba(239,68,68,0.04))',
         'gold-gradient':
           'linear-gradient(180deg, #F4C766 0%, #E8B14A 50%, #C7943A 100%)',
       },

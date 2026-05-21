@@ -4,6 +4,7 @@ import { getCollection } from '../chain/lcd.js';
 import { extractSummary, isPredictionMarket } from '../chain/classify.js';
 import { publish, channel } from '../pubsub.js';
 import { snapshotMarket, snapshotMarkets } from '../snapshots.js';
+import { seedInitialCandles } from '../db/candles.js';
 
 const SYNC_KEY = 'bootstrap.last_scanned_id';
 const REFRESH_INTERVAL_MS = 15_000;
@@ -102,6 +103,7 @@ export function upsertMarket(c: any): void {
     .prepare('SELECT collection_id, created_at FROM markets WHERE collection_id = ?')
     .get(s.collectionId) as { collection_id: string; created_at: number } | undefined;
   const createdAt = existing?.created_at ?? now;
+  const isNew = !existing;
 
   getDb()
     .prepare(
@@ -139,6 +141,12 @@ export function upsertMarket(c: any): void {
       now,
       JSON.stringify(c),
     );
+  // Seed a 50/50 starting candle the FIRST time a market is indexed. The
+  // chart then renders a flat line from creation forward without any
+  // client-side anchor logic. `seedInitialCandles` uses INSERT OR IGNORE so
+  // re-upserts of an existing market are safe.
+  if (isNew) seedInitialCandles(s.collectionId, createdAt);
+
   // Broadcast: single-market update for /markets/{id} subscribers + full list
   // for browse-page subscribers. Cheap — the list query is bounded at 100.
   publish(channel.market(s.collectionId), snapshotMarket(s.collectionId));

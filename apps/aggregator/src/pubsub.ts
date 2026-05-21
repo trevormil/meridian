@@ -41,4 +41,5 @@ export const channel = {
   intents: (collectionId: string): string => `intents:${collectionId}`,
   intentsOwner: (address: string): string => `intents-owner:${address}`,
   candle: (collectionId: string): string => `candle:${collectionId}`,
+  fills: (collectionId: string): string => `fills:${collectionId}`,
 };

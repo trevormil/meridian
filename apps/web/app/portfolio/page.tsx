@@ -97,6 +97,91 @@ function OpenOrderRow({ intent: i }: { intent: IntentDto }) {
   );
 }
 
+/**
+ * Position row — one entry per market the user holds tokens on. Three-column
+ * grid:
+ *   LEFT — ticker logo + ticker eyebrow + strike (Fraunces serif)
+ *   MID  — current YES probability + holding chips (YES/NO with mark values)
+ *   RIGHT — total mark-to-market value at current market quotes
+ *
+ * Skips the zero side when only one of YES/NO is held (no more "1 YES vs 0 NO"
+ * noise). Always reads the latest yesPrice off the realtime market so the
+ * portfolio is mark-to-market live as quotes move.
+ */
+function PositionRow({ position }: { position: Position }) {
+  const m = position.market;
+  const parsed = parseMarketRow(m.name);
+  const totalValue = (Number(position.yes) * m.yesPrice + Number(position.no) * m.noPrice) /
+    10 ** env.usdcDecimals;
+  const yesTok = formatBaseUnits(position.yes, env.usdcDecimals);
+  const noTok = formatBaseUnits(position.no, env.usdcDecimals);
+
+  return (
+    <li>
+      <Link
+        href={`/markets/${m.collectionId}`}
+        className="group grid h-14 grid-cols-[auto_1fr_auto_auto] items-center gap-6 px-1 transition-colors hover:bg-panel-2/60"
+      >
+        <TickerGlyph ticker={parsed?.ticker} image={m.image} fallback={m.name} />
+        <span className="truncate font-display text-base font-semibold leading-none tracking-marquee text-ink transition-colors group-hover:text-gold-bright">
+          {parsed ? (
+            <>
+              <span className="font-mono text-[10px] tracking-[0.14em] text-muted">{parsed.ticker}</span>{' '}
+              <span>&gt; ${parsed.strike}</span>
+            </>
+          ) : (
+            m.name ?? `Market #${m.collectionId}`
+          )}
+        </span>
+        <span className="whitespace-nowrap font-mono text-xs">
+          {position.yes > 0n && <span className="text-yes">{yesTok} YES</span>}
+          {position.yes > 0n && position.no > 0n && <span className="text-faint"> · </span>}
+          {position.no > 0n && <span className="text-no">{noTok} NO</span>}
+        </span>
+        <span className="whitespace-nowrap text-right font-mono text-base font-semibold text-gold-bright">
+          {totalValue.toFixed(2)}{' '}
+          <span className="text-[10px] uppercase tracking-[0.14em] text-muted">{env.usdcSymbol}</span>
+        </span>
+      </Link>
+    </li>
+  );
+}
+
+function TickerGlyph({
+  ticker,
+  image,
+  fallback,
+}: {
+  ticker?: string;
+  image: string | null | undefined;
+  fallback: string | null | undefined;
+}) {
+  const src = image ?? (ticker ? `/companies/${ticker}.png` : null);
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt={ticker ?? ''}
+        className="h-10 w-10 shrink-0 rounded-md border border-border bg-bg-deep object-contain p-1.5"
+        onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')}
+      />
+    );
+  }
+  return (
+    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border bg-bg-deep font-display text-base font-semibold text-muted">
+      {(fallback ?? '?').slice(0, 1).toUpperCase()}
+    </div>
+  );
+}
+
+function parseMarketRow(name: string | null | undefined): { ticker: string; strike: string } | null {
+  if (!name) return null;
+  const stripped = name.replace(/^\[[^\]]+]\s*/, '');
+  const m = stripped.match(/^([A-Z]{1,6})\s*>\s*\$([0-9,]+)/);
+  return m ? { ticker: m[1], strike: m[2] } : null;
+}
+
 function formatBaseUnits(raw: bigint, decimals: number): string {
   if (raw === 0n) return '0';
   const div = BigInt(10) ** BigInt(decimals);
@@ -158,33 +243,39 @@ export default function PortfolioPage() {
       <Empty
         title="Connect a wallet"
         description="View your prediction-market positions and open orders."
-        action={<Button onClick={connect}>Connect Keplr</Button>}
+        action={<Button onClick={connect}>Connect wallet</Button>}
       />
     );
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-3xl font-bold">Portfolio</h1>
-        <p className="mt-1 text-sm text-muted">Your YES/NO positions and open orders across all markets.</p>
+    <div className="space-y-8 animate-fade-in">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <span className="eyebrow">Account</span>
+          <h1 className="mt-2 font-display text-5xl font-semibold leading-none tracking-marquee text-ink">
+            Portfolio
+          </h1>
+          <p className="mt-3 max-w-xl text-sm text-ink-dim">
+            YES/NO positions and open orders across all your active markets.
+          </p>
+        </div>
+        <Link
+          href="/"
+          className="text-xs font-semibold uppercase tracking-[0.16em] text-muted transition-colors hover:text-gold"
+        >
+          Browse markets →
+        </Link>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card variant="hero" className="bg-hero-radial">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
-                Available <UsdcSymbol />
-              </div>
-              <div className="mt-1 flex items-center gap-3">
-                <CoinIcon denom={env.usdcDenom} size="lg" />
-                <CoinDisplay denom={env.usdcDenom} amount={usdc} icon={false} size="lg" mono />
-              </div>
+          <span className="eyebrow">Available cash</span>
+          <div className="mt-3 flex items-center gap-3">
+            <CoinIcon denom={env.usdcDenom} size="lg" className="shrink-0" />
+            <div className="flex items-baseline gap-2 leading-none">
+              <CoinDisplay denom={env.usdcDenom} amount={usdc} icon={false} size="lg" mono />
             </div>
-            <Link href="/">
-              <Button variant="secondary">Browse markets</Button>
-            </Link>
           </div>
         </Card>
         <FaucetCard />
@@ -192,30 +283,23 @@ export default function PortfolioPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Positions ({positions.length})</CardTitle>
+          <CardTitle>Positions · {positions.length}</CardTitle>
         </CardHeader>
-        {loading && <div className="space-y-2"><Skeleton className="h-16 w-full rounded-lg" /><Skeleton className="h-16 w-full rounded-lg" /></div>}
-        {!loading && positions.length === 0 && <p className="text-sm text-muted">No positions yet. Deposit on any market to mint YES + NO tokens.</p>}
+        {loading && (
+          <div className="space-y-2">
+            <Skeleton className="h-14 w-full rounded" />
+            <Skeleton className="h-14 w-full rounded" />
+          </div>
+        )}
+        {!loading && positions.length === 0 && (
+          <p className="text-sm text-muted">
+            No positions yet. Deposit on any market to mint YES + NO tokens.
+          </p>
+        )}
         {positions.length > 0 && (
-          <ul className="space-y-2">
+          <ul className="divide-y divide-border">
             {positions.map((p) => (
-              <li key={p.market.collectionId}>
-                <Link
-                  href={`/markets/${p.market.collectionId}`}
-                  className="block rounded-lg border border-border bg-bg/40 p-3 transition-colors hover:border-border-hi hover:bg-panel-2"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-medium">{p.market.name ?? `Market #${p.market.collectionId}`}</div>
-                      <div className="text-[10px] uppercase tracking-wider text-muted">#{p.market.collectionId}</div>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-3 text-sm">
-                      <CoinDisplay denom={`badgeslp:${p.market.collectionId}:uyes`} amount={p.yes} size="sm" mono />
-                      <CoinDisplay denom={`badgeslp:${p.market.collectionId}:uno`} amount={p.no} size="sm" mono />
-                    </div>
-                  </div>
-                </Link>
-              </li>
+              <PositionRow key={p.market.collectionId} position={p} />
             ))}
           </ul>
         )}

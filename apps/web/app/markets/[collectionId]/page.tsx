@@ -14,9 +14,11 @@ import { DepositPanel } from '@/components/prediction/DepositPanel';
 import { RedeemPanel } from '@/components/prediction/RedeemPanel';
 import { SettlePanel } from '@/components/prediction/SettlePanel';
 import { IntentsPanel } from '@/components/prediction/IntentsPanel';
+import { ActivityFeed } from '@/components/prediction/ActivityFeed';
+import { YourPositionBar } from '@/components/prediction/YourPositionBar';
 import { Skeleton } from '@/components/ui/Empty';
 
-type TabKey = 'market' | 'intents' | 'deposit' | 'redeem' | 'settle';
+type TabKey = 'market' | 'intents' | 'activity' | 'deposit' | 'redeem' | 'settle';
 
 export default function MarketPage() {
   const params = useParams<{ collectionId: string }>();
@@ -49,6 +51,7 @@ export default function MarketPage() {
     () => [
       { key: 'market', label: 'Market' },
       { key: 'intents', label: 'Order Book' },
+      { key: 'activity', label: 'Activity' },
       { key: 'deposit', label: 'Deposit' },
       { key: 'redeem', label: 'Redeem' },
       { key: 'settle', label: 'Settlement', hidden: !isVerifier },
@@ -72,10 +75,12 @@ export default function MarketPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <MarketHeader market={market} />
+      <YourPositionBar market={market} />
       <Tabs tabs={tabs} active={tab} onChange={(k) => setTab(k as TabKey)} />
       <div>
         {tab === 'market' && <MarketOverviewTab market={market} />}
         {tab === 'intents' && <IntentsPanel market={market} />}
+        {tab === 'activity' && <ActivityFeed market={market} />}
         {tab === 'deposit' && (
           <div className="mx-auto max-w-lg">
             <DepositPanel collectionId={market.collectionId} mintApprovalId={approvals.mintApprovalId} market={market} />

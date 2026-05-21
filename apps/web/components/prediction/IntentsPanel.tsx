@@ -131,7 +131,7 @@ function NewIntentForm({ market, onSuccess }: { market: MarketDto; onSuccess: ()
 
         <div>
           <div className="mb-1 flex items-center justify-between text-xs text-muted">
-            <span>Price (implied probability)</span>
+            <span>Price</span>
             {customMode ? (
               <button
                 type="button"
@@ -177,7 +177,7 @@ function NewIntentForm({ market, onSuccess }: { market: MarketDto; onSuccess: ()
               />
             </>
           ) : (
-            <div className="flex items-center justify-between rounded border border-border bg-bg px-3 py-2">
+            <div className="flex h-10 items-center justify-between rounded border border-border bg-bg-deep px-3">
               <span className="font-mono text-sm text-ink">{marketPct}%</span>
               <span className="text-[10px] uppercase tracking-wider text-muted">market</span>
             </div>
@@ -211,6 +211,7 @@ function NewIntentForm({ market, onSuccess }: { market: MarketDto; onSuccess: ()
         />
 
         <TxButton
+          fullWidth
           label={`${direction === 'buy' ? 'Buy' : 'Sell'} ${tokenAmount || '0'} ${side.toUpperCase()}`}
           variant={side === 'yes' ? 'yes' : 'no'}
           disabled={!address || tokenAmt === 0n || coinAmt === 0n}
@@ -273,7 +274,7 @@ function Preview({
   totalUsdc: number;
 }) {
   return (
-    <div className="rounded border border-border bg-bg p-3 text-xs">
+    <div className="rounded border border-border bg-bg-deep p-3 text-xs">
       <div className="flex justify-between">
         <span className="text-muted">You {direction === 'buy' ? 'pay' : 'receive'}</span>
         <span className="flex items-center gap-1 font-mono">{totalUsdc.toFixed(4)} <UsdcSymbol /></span>

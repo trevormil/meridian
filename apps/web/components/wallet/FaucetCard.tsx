@@ -93,25 +93,43 @@ export function FaucetCard() {
         <span className="text-[10px] uppercase tracking-wider text-muted">dev only</span>
       </CardHeader>
       <div className="space-y-3">
-        <p className="flex items-center gap-1.5 text-sm text-muted">
-          Tap {perClaimDisplay} <CoinLogo denom={env.usdcSymbol} size={14} /> {env.usdcSymbol} from the dev faucet to your connected wallet.
+        <p className="text-sm leading-relaxed text-ink-dim">
+          Tap{' '}
+          <span className="inline-flex items-baseline gap-1 whitespace-nowrap align-baseline">
+            <CoinLogo denom={env.usdcSymbol} size={12} className="translate-y-[1px]" />
+            <span className="font-mono text-ink">{perClaimDisplay} {env.usdcSymbol}</span>
+          </span>{' '}
+          from the dev faucet to your connected wallet.
         </p>
-        <div className="flex items-center justify-between rounded border border-border bg-bg/60 p-3 text-xs">
-          <div>
-            <div className="text-muted">Faucet balance</div>
-            <div className="mt-0.5 flex items-center gap-1.5">
+
+        <div className="grid grid-cols-[1fr_auto] items-center gap-3 rounded border border-border bg-bg-deep p-3 text-xs">
+          <div className="min-w-0">
+            <div className="eyebrow">Faucet balance</div>
+            <div className="mt-1 flex items-center gap-1.5">
               <CoinLogo denom={env.usdcSymbol} size={14} />
-              <span className="font-mono text-ink">{balanceDisplay} {env.usdcSymbol}</span>
-              <span className="text-muted">({status.claimsLeft ?? 0} claims left)</span>
+              <span className="font-mono text-ink">
+                {balanceDisplay} <span className="text-muted">{env.usdcSymbol}</span>
+              </span>
+            </div>
+            <div className="mt-0.5 font-mono text-[10px] tracking-[0.12em] text-faint">
+              {status.claimsLeft ?? 0} claims left
             </div>
           </div>
           {status.address && (
-            <div className="text-right">
-              <div className="text-muted">From</div>
-              <AddressDisplay address={status.address} size={12} copyable={false} className="text-ink" />
+            <div className="min-w-0 text-right">
+              <div className="eyebrow">From</div>
+              <div className="mt-1 inline-flex">
+                <AddressDisplay
+                  address={status.address}
+                  size={12}
+                  copyable={false}
+                  className="text-ink"
+                />
+              </div>
             </div>
           )}
         </div>
+
         <Button
           onClick={claim}
           loading={busy}

@@ -2,7 +2,7 @@ import { getDb, getSyncState, setSyncState } from '../db/index.js';
 import { env } from '../env.js';
 import { getPool } from '../chain/lcd.js';
 import { getLatestHeight } from '../chain/height.js';
-import { recordCandle, updateMarketPrice } from '../db/candles.js';
+import { recordCandle, updateMarketPrice, seedInitialCandles } from '../db/candles.js';
 import { refreshAllIntents } from './intent-watcher.js';
 
 interface MarketRow {
@@ -17,30 +17,68 @@ function noDenom(collectionId: string): string {
   return `badgeslp:${collectionId}:uno`;
 }
 
+interface HeartbeatMarketRow extends MarketRow {
+  yes_price: number | null;
+  no_price: number | null;
+  created_at: number;
+}
+
 export async function pollPricesOnce(): Promise<void> {
   const markets = getDb()
-    .prepare('SELECT collection_id, pool_id FROM markets WHERE status = ?')
-    .all('active') as MarketRow[];
+    .prepare(
+      'SELECT collection_id, pool_id, yes_price, no_price, created_at FROM markets WHERE status = ?',
+    )
+    .all('active') as HeartbeatMarketRow[];
 
   for (const m of markets) {
-    if (!m.pool_id) continue;
-    try {
-      const pool = await getPool(m.pool_id);
-      if (!pool) continue;
-      const yes = pool.pool_assets.find((p) => p.token.denom === yesDenom(m.collection_id));
-      const no = pool.pool_assets.find((p) => p.token.denom === noDenom(m.collection_id));
-      if (!yes || !no) continue;
-      const yReserve = Number(yes.token.amount);
-      const nReserve = Number(no.token.amount);
-      const total = yReserve + nReserve;
-      if (total <= 0) continue;
-      // YES price = NO_reserve / (YES + NO). Higher NO supply implies cheaper NO and pricier YES.
-      const yesPrice = nReserve / total;
-      const noPrice = yReserve / total;
-      recordCandle(m.collection_id, yesPrice, noPrice);
+    // Self-heal: backfill the initial 50/50 seed for markets indexed before
+    // seedInitialCandles was wired into upsertMarket. One-time per market;
+    // INSERT OR IGNORE makes the call cheap when the seed already exists.
+    const hasAnyCandle = getDb()
+      .prepare('SELECT 1 FROM price_history WHERE collection_id = ? LIMIT 1')
+      .get(m.collection_id);
+    if (!hasAnyCandle) {
+      seedInitialCandles(m.collection_id, m.created_at);
+    }
+    let yesPrice: number | null = null;
+    let noPrice: number | null = null;
+
+    // Prefer pool-derived price when a gamm pool exists for this market.
+    if (m.pool_id) {
+      try {
+        const pool = await getPool(m.pool_id);
+        if (pool) {
+          const yes = pool.pool_assets.find((p) => p.token.denom === yesDenom(m.collection_id));
+          const no = pool.pool_assets.find((p) => p.token.denom === noDenom(m.collection_id));
+          if (yes && no) {
+            const yReserve = Number(yes.token.amount);
+            const nReserve = Number(no.token.amount);
+            const total = yReserve + nReserve;
+            if (total > 0) {
+              yesPrice = nReserve / total;
+              noPrice = yReserve / total;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn(`[price-poller] ${m.collection_id} pool fetch:`, (err as Error).message);
+      }
+    }
+
+    // Heartbeat fallback: when there's no pool (intent-only markets) or the
+    // pool fetch failed, repeat the last-known price so the chart shows a
+    // continuous line instead of one stranded dot. Defaults to 50/50 prior
+    // when the market has never had a trade.
+    if (yesPrice === null || noPrice === null) {
+      yesPrice = m.yes_price ?? 0.5;
+      noPrice = m.no_price ?? 0.5;
+    }
+
+    recordCandle(m.collection_id, yesPrice, noPrice);
+    // Only refresh the markets row's `last_synced` when the price ACTUALLY
+    // moved — otherwise we'd churn the publish channel on every heartbeat.
+    if (m.yes_price === null || Math.abs((m.yes_price ?? 0) - yesPrice) > 1e-6) {
       updateMarketPrice(m.collection_id, yesPrice, noPrice);
-    } catch (err) {
-      console.warn(`[price-poller] ${m.collection_id}:`, (err as Error).message);
     }
   }
 }

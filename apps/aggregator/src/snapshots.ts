@@ -94,3 +94,51 @@ export function snapshotCandle(collectionId: string): unknown | null {
     | null;
   return row;
 }
+
+export interface FillDto {
+  collectionId: string;
+  approvalId: string;
+  approverAddress: string;
+  ts: number;
+  side: 'yes' | 'no';
+  tokenAmount: string;
+  coinAmount: string;
+  price: number;
+  fromAddress: string;
+  toAddress: string;
+}
+
+export function snapshotFills(collectionId: string, limit = 100): FillDto[] {
+  const rows = getDb()
+    .prepare(
+      `SELECT collection_id, approval_id, approver_address, ts, side, token_amount, coin_amount, price, from_address, to_address
+       FROM fills
+       WHERE collection_id = ?
+       ORDER BY ts DESC
+       LIMIT ?`,
+    )
+    .all(collectionId, limit) as Array<{
+    collection_id: string;
+    approval_id: string;
+    approver_address: string;
+    ts: number;
+    side: 'yes' | 'no';
+    token_amount: string;
+    coin_amount: string;
+    price: number;
+    from_address: string;
+    to_address: string;
+  }>;
+  return rows.map((r) => ({
+    collectionId: r.collection_id,
+    approvalId: r.approval_id,
+    approverAddress: r.approver_address,
+    ts: r.ts,
+    side: r.side,
+    tokenAmount: r.token_amount,
+    coinAmount: r.coin_amount,
+    price: r.price,
+    fromAddress: r.from_address,
+    toAddress: r.to_address,
+  }));
+}
