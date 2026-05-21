@@ -21,11 +21,11 @@ const TAB_LABELS: Record<Tab, string> = {
 };
 
 const TAB_COLORS: Record<Tab, string> = {
-  active: 'border-yes/40 bg-yes/10 text-yes',
-  yes: 'border-yes/40 bg-yes/15 text-yes',
-  no: 'border-no/40 bg-no/15 text-no',
-  push: 'border-accent/40 bg-accent/10 text-accent',
-  other: 'border-border bg-bg/40 text-muted',
+  active: 'border-gold/50 bg-gold/10 text-gold',
+  yes: 'border-yes/40 bg-yes/15 text-yes-bright',
+  no: 'border-no/40 bg-no/15 text-no-bright',
+  push: 'border-amber/40 bg-amber/10 text-amber',
+  other: 'border-border bg-panel-2 text-muted',
 };
 
 /**
@@ -70,21 +70,25 @@ export default function HomePage() {
   return (
     <div className="space-y-8">
       <div>
-        <div className="mb-6 flex items-end justify-between gap-4">
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-6">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight">Markets</h1>
-            <p className="mt-2 max-w-xl text-sm text-muted">
-              Daily binary outcome contracts on MAG7 stock closing prices. Each contract pays
-              $1 USDC for the winning side, $0 for the losing side. Auto-settled via oracle at
-              4:05 PM ET. USDC-backed, fully on-chain.
+            <span className="eyebrow">Today · MAG7 closing prices</span>
+            <h1 className="mt-3 font-display text-6xl font-semibold leading-none tracking-marquee text-ink">
+              Markets
+            </h1>
+            <p className="mt-4 max-w-xl text-sm leading-relaxed text-ink-dim">
+              Daily binary outcome contracts on the seven largest US tech equities. Each pays{' '}
+              <span className="font-mono text-gold">$1 USDC</span> for the winning side,{' '}
+              <span className="font-mono text-faint">$0</span> for the losing side. Auto-settled
+              via oracle at 4:05 PM ET.
             </p>
           </div>
           <div className="flex shrink-0 gap-2">
-            <Button variant="secondary" onClick={manualRefresh} loading={refreshing}>
+            <Button variant="secondary" size="sm" onClick={manualRefresh} loading={refreshing}>
               Refresh
             </Button>
             <Link href="/create">
-              <Button>+ New market</Button>
+              <Button size="sm">Create market</Button>
             </Link>
           </div>
         </div>

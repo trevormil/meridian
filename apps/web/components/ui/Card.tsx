@@ -1,11 +1,22 @@
 import { clsx } from 'clsx';
 import type { HTMLAttributes } from 'react';
 
+/**
+ * Card system — three variants matched to information density:
+ *
+ *   flat   — bare bg-panel, hairline border. Use for body content + tables.
+ *   raised — same but lifted with a subtle outer shadow. Use for the primary
+ *            content panels on each page.
+ *   hero   — bg with a warm gradient + bright hairline + lift. Use for the
+ *            most important panel on the page (market detail header, settle).
+ *
+ * Optional `accent` strip on the left edge — gold / yes / no — for state.
+ * Cards intentionally use a small `rounded` radius (4px) not the soft pillowy
+ * rounded-2xl that's everywhere in AI-generated UIs.
+ */
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
-  /** Render with gradient + lift shadow for hero panels. */
   variant?: 'flat' | 'raised' | 'hero';
-  /** Subtle accent border tint. */
-  accent?: 'yes' | 'no' | 'accent' | null;
+  accent?: 'gold' | 'yes' | 'no' | null;
 }
 
 const variants = {
@@ -15,16 +26,16 @@ const variants = {
 };
 
 const accents = {
-  yes: 'border-yes/30 shadow-[0_0_0_1px_rgba(34,197,94,0.1)]',
-  no: 'border-no/30 shadow-[0_0_0_1px_rgba(239,68,68,0.1)]',
-  accent: 'border-accent/30 shadow-[0_0_0_1px_rgba(59,130,246,0.1)]',
+  gold: 'border-l-gold/60 border-l-2',
+  yes: 'border-l-yes/60 border-l-2',
+  no: 'border-l-no/60 border-l-2',
 };
 
 export function Card({ className, variant = 'raised', accent, ...rest }: CardProps) {
   return (
     <div
       className={clsx(
-        'rounded-xl border p-5 transition-colors',
+        'rounded border p-6 transition-colors',
         variants[variant],
         accent && accents[accent],
         className,
@@ -35,13 +46,21 @@ export function Card({ className, variant = 'raised', accent, ...rest }: CardPro
 }
 
 export function CardHeader({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={clsx('mb-4 flex items-center justify-between', className)} {...rest} />;
+  return (
+    <div
+      className={clsx('mb-5 flex items-center justify-between gap-3', className)}
+      {...rest}
+    />
+  );
 }
 
 export function CardTitle({ className, ...rest }: HTMLAttributes<HTMLHeadingElement>) {
   return (
     <h3
-      className={clsx('text-xs font-semibold uppercase tracking-[0.14em] text-muted', className)}
+      className={clsx(
+        'text-[10px] font-semibold uppercase tracking-[0.18em] text-muted',
+        className,
+      )}
       {...rest}
     />
   );

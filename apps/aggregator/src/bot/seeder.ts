@@ -48,22 +48,62 @@ function shouldSeed(): boolean {
   return (process.env.SEED_MODE ?? '').toLowerCase() === 'true';
 }
 
+/**
+ * In-process lock — `runOnce` is async and can run for a while (each market
+ * is two sequential txs that wait for commit). If markets-channel events
+ * arrive while we're mid-loop, we don't re-enter; we just remember that
+ * another sweep is needed and trigger it when the current one returns.
+ *
+ * Without this, the morning script's burst of 45 markets fires 45 listen
+ * callbacks within seconds, but only the first one wins (LIMIT 10 candidates,
+ * mark in_progress), and the subsequent calls all see the same first batch.
+ * Net effect: only the first few seed.
+ */
+let _runInFlight = false;
+let _runPending = false;
+
 export function startSeeder(): () => void {
   if (!shouldSeed()) {
     console.log('[seeder] SEED_MODE not set — disabled');
     return () => {};
   }
-
-  // Listen for new collection inserts via the `markets` channel; the publish
-  // happens inside `upsertMarket` when a fresh row goes in. We dedupe via the
-  // DB column `seed_status` so each market is only seeded once.
   ensureSeedStatusColumn();
+
+  // Listen for new collection inserts via the `markets` channel.
   const off = listen(channel.markets(), () => {
-    void runOnce();
+    void triggerRun();
   });
-  // Also scan once at startup so any unseeded markets from prior runs get a hit.
-  void runOnce();
-  return off;
+
+  // Belt-and-suspenders: periodic sweep (every 20s) so even if every
+  // listener event was missed (HMR reload, transient pubsub hiccup), the
+  // backlog drains within a tick.
+  const interval = setInterval(() => void triggerRun(), 20_000);
+
+  // Initial sweep at startup so pre-existing unseeded markets get hit.
+  void triggerRun();
+
+  return () => {
+    off();
+    clearInterval(interval);
+  };
+}
+
+async function triggerRun(): Promise<void> {
+  if (_runInFlight) {
+    // Another sweep is mid-loop; remember to do one more after it finishes
+    // so we never lose markets that got inserted while we were busy.
+    _runPending = true;
+    return;
+  }
+  _runInFlight = true;
+  try {
+    do {
+      _runPending = false;
+      await runOnce();
+    } while (_runPending);
+  } finally {
+    _runInFlight = false;
+  }
 }
 
 function ensureSeedStatusColumn(): void {
@@ -81,12 +121,15 @@ async function runOnce(): Promise<void> {
     return;
   }
 
+  // No LIMIT — process every unseeded active market in a single sweep so
+  // morning script bursts don't get capped at 10 markets. Each seed is a
+  // sequential 2-tx flow with commit waits, so this paces itself naturally.
   const candidates = getDb()
     .prepare(
       `SELECT collection_id, raw_collection_json FROM markets
        WHERE (seed_status IS NULL OR seed_status = 'pending')
          AND status = 'active'
-       LIMIT 10`,
+       ORDER BY CAST(collection_id AS INTEGER) ASC`,
     )
     .all() as Array<{ collection_id: string; raw_collection_json: string }>;
 
