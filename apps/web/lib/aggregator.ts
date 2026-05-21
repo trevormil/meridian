@@ -71,4 +71,9 @@ export const aggregator = {
     get<{ intents: IntentDto[] }>(
       `/intents/${address}?includeAll=${includeAll}${collectionId ? `&collectionId=${collectionId}` : ''}`,
     ).then((r) => r.intents),
+  // Synchronously force the aggregator to re-scan fills + votes for one market.
+  // Call after a verifier vote (or any tx) where you can't afford to wait on
+  // the live tx-watcher in case the WS event stream missed the tx.
+  refreshFills: (id: string) =>
+    post<{ ok: boolean; fills: number; votes: number }>(`/predictions/${id}/refresh-fills`),
 };

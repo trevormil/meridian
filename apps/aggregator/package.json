@@ -12,7 +12,10 @@
     "dev:fresh": "bun run wipe && bun run dev",
     "start:fresh": "bun run wipe && bun run start",
     "test:e2e": "bun run test/e2e/runner.ts",
-    "test:e2e:bot": "bun run test/e2e/bot-runner.ts"
+    "test:e2e:bot": "bun run test/e2e/bot-runner.ts",
+    "meridian:morning": "bun run src/meridian/morning.ts",
+    "meridian:evening": "bun run src/meridian/evening.ts",
+    "meridian:bootstrap": "bun run src/meridian/bootstrap-oracle.ts"
   },
   "dependencies": {
     "@cosmjs/encoding": "^0.32.4",

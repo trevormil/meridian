@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { TxButton } from '@/components/tx/TxButton';
 import { AddressDisplay } from '@/components/ui/AddressDisplay';
 import { buildResolveMsgs, type SettlementApprovals } from '@/lib/prediction-market/sdk';
-import type { MarketDto } from '@/lib/aggregator';
+import { aggregator, type MarketDto } from '@/lib/aggregator';
 
 interface Props {
   market: MarketDto;
@@ -127,7 +127,20 @@ export function SettlePanel({ market, approvals, onSuccess }: Props) {
             approvals,
           });
         }}
-        onSuccess={onSuccess}
+        onSuccess={async () => {
+          // The aggregator's live tx-watcher *usually* picks up the cast_vote
+          // event and flips status within a tick, but the WS stream occasionally
+          // misses txs. Synchronously poke /refresh-fills so the vote is
+          // recorded + status published on the market realtime channel before
+          // the user looks at the page. Without this, the UI can lag until the
+          // next 30s backfill loop.
+          try {
+            await aggregator.refreshFills(market.collectionId);
+          } catch {
+            // non-fatal — tx already on-chain; backfill loop will reconcile.
+          }
+          onSuccess?.();
+        }}
       />
     </Card>
   );
