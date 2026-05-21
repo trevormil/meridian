@@ -21,7 +21,7 @@ import {
   GenericCosmosAdapter,
   BitBadgesSigningClient,
 } from 'bitbadges';
-import { MAG7, type Ticker } from './constants.js';
+import { MAG7, type Ticker, logoUrl } from './constants.js';
 import { calculateStrikes } from './strikes.js';
 import { fetchAllQuotes } from './prices.js';
 import { getOracleSigner, oracleBroadcast } from './signer.js';
@@ -34,15 +34,26 @@ interface MarketSpec {
   closeDate: string;
 }
 
+/**
+ * Test runs set MERIDIAN_TEST_LABEL=E2E so the markets they spawn (which
+ * stay on-chain forever even after the test cleans up its sidecar table
+ * rows) are visually distinguishable + filterable by the aggregator.
+ */
+const TEST_LABEL = process.env.MERIDIAN_TEST_LABEL;
+
 function marketName(spec: MarketSpec): string {
-  return `${spec.ticker} > $${spec.strike}`;
+  const base = `${spec.ticker} > $${spec.strike}`;
+  return TEST_LABEL ? `[${TEST_LABEL}] ${base}` : base;
 }
 
 function marketDescription(spec: MarketSpec): string {
   return `Will ${spec.ticker} close at or above $${spec.strike} on ${spec.closeDate}? Settles via oracle vote at ~4:05 PM ET on ${spec.closeDate}.`;
 }
 
-const MARKET_IMAGE = 'https://bitbadges.io/images/badge_logo.png';
+// Per-ticker logo URL is resolved from `constants.logoUrl()` (overridable via
+// MERIDIAN_LOGO_BASE). Fall back to the BitBadges mark if a ticker isn't
+// known to the logo mirror.
+const FALLBACK_IMAGE = 'https://bitbadges.io/images/badge_logo.png';
 
 /** Extract the freshly-created `collection_id` from a Cosmos tx response. */
 async function getCollectionIdFromTx(txHash: string): Promise<string | null> {
@@ -76,7 +87,7 @@ async function createOne(signer: { client: BitBadgesSigningClient; address: stri
     verifier: signer.address,
     name: marketName(spec),
     description: marketDescription(spec),
-    image: MARKET_IMAGE,
+    image: logoUrl(spec.ticker) || FALLBACK_IMAGE,
     denom: 'USDC',
   }) as { typeUrl: string; value: Record<string, unknown> };
   // The SDK builder leaves `creator` blank — fill it in for the broadcaster.

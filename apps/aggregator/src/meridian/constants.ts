@@ -17,3 +17,19 @@ export const STRIKE_ROUND_TO = 10;
 
 /** Token quantity each market mint represents — base units (6-decimal USDC). */
 export const ONE_TOKEN = 1_000_000n;
+
+/**
+ * Base URL for per-ticker logos. Defaults to a public GitHub mirror of all
+ * MAG7 logos that's been stable for years; production deployments can override
+ * via `MERIDIAN_LOGO_BASE` to point at their own CDN.
+ *
+ * Local mirrors of these PNGs ship in `apps/web/public/companies/{TICKER}.png`
+ * for the FE to render offline if needed.
+ */
+export const LOGO_BASE =
+  process.env.MERIDIAN_LOGO_BASE ??
+  'https://raw.githubusercontent.com/davidepalazzo/ticker-logos/master/ticker_icons';
+
+export function logoUrl(ticker: Ticker): string {
+  return `${LOGO_BASE}/${ticker}.png`;
+}

@@ -41,7 +41,7 @@ export async function bootstrapScan(): Promise<{ scanned: number; found: number 
     }
     misses = 0;
     lastFound = id;
-    if (isPredictionMarket(c)) {
+    if (isPredictionMarket(c) && !isHiddenTestMarket(c)) {
       upsertMarket(c);
       found++;
       console.log(`[bootstrap] indexed prediction market #${id}`);
@@ -63,6 +63,25 @@ export function startBootstrapLoop(): NodeJS.Timer {
   return setInterval(() => {
     bootstrapScan().catch((e) => console.error('[bootstrap] interval:', e));
   }, REFRESH_INTERVAL_MS);
+}
+
+/**
+ * Markets whose name starts with `[E2E]` or whose description references a
+ * far-future close date are artifacts of the Meridian e2e test suite (which
+ * has to create real on-chain markets to exercise the full lifecycle). We
+ * hide them from the aggregator's view so they don't pollute the FE.
+ *
+ * The markets can't be deleted on-chain — they just get skipped here at the
+ * bootstrap-index boundary, which keeps the indexed `markets` table clean.
+ */
+function isHiddenTestMarket(c: any): boolean {
+  // Find the latest metadata entry. Markets store name + description there.
+  const md = c?.collectionMetadataTimeline?.[0]?.collectionMetadata;
+  const name: string = md?.name ?? '';
+  const description: string = md?.description ?? '';
+  if (name.startsWith('[E2E]') || name.startsWith('[TEST]')) return true;
+  if (/\b209[0-9]-\d{2}-\d{2}\b/.test(description)) return true;
+  return false;
 }
 
 export function upsertMarket(c: any): void {

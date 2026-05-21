@@ -62,6 +62,10 @@ function runScript(script: 'morning.ts' | 'evening.ts', priceOverride: string): 
       ...process.env,
       MERIDIAN_CLOSE_DATE: CLOSE_DATE,
       MERIDIAN_PRICE_OVERRIDE: priceOverride,
+      // Names like "[E2E] TSLA > $310" + bootstrap.isHiddenTestMarket together
+      // keep e2e-created markets out of the indexed `markets` table so they
+      // don't appear in the dev FE's browse list.
+      MERIDIAN_TEST_LABEL: 'E2E',
     },
     encoding: 'utf8',
   });

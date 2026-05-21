@@ -32,10 +32,11 @@ export default function HomePage() {
       <div>
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight">Prediction markets</h1>
+            <h1 className="text-4xl font-bold tracking-tight">Markets</h1>
             <p className="mt-2 max-w-xl text-sm text-muted">
-              Trade binary outcomes on-chain. Every market settles via a designated verifier who
-              casts a public vote. USDC-backed, fully transparent.
+              Daily binary outcome contracts on MAG7 stock closing prices. Each contract pays
+              $1 USDC for the winning side, $0 for the losing side. Auto-settled via oracle at
+              4:05 PM ET. USDC-backed, fully on-chain.
             </p>
           </div>
           <div className="flex shrink-0 gap-2">
