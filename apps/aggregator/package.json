@@ -1,0 +1,32 @@
+{
+  "name": "@bitbadges-pm/aggregator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "wipe": "rm -rf ./data && echo 'wiped ./data'",
+    "reset-cursor": "bun run src/scripts/reset-cursor.ts",
+    "dev:fresh": "bun run wipe && bun run dev",
+    "start:fresh": "bun run wipe && bun run start",
+    "test:e2e": "bun run test/e2e/runner.ts"
+  },
+  "dependencies": {
+    "@cosmjs/encoding": "^0.32.4",
+    "@cosmjs/stargate": "^0.32.4",
+    "@cosmjs/tendermint-rpc": "^0.32.4",
+    "@hono/node-server": "^1.13.7",
+    "better-sqlite3": "^11.6.0",
+    "bitbadges": "*",
+    "dotenv": "^17.4.2",
+    "hono": "^4.6.12"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/bun": "^1.3.14",
+    "@types/node": "^20.16.0",
+    "typescript": "^5.6.3"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "bitbadges-pm",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev:web": "cd apps/web && bun run dev",
+    "dev:aggregator": "cd apps/aggregator && bun run dev",
+    "dev": "concurrently -n web,agg -c blue,green \"bun run dev:web\" \"bun run dev:aggregator\"",
+    "dev:fresh": "bun run wipe && bun run dev",
+    "wipe": "cd apps/aggregator && bun run wipe",
+    "reset-cursor": "cd apps/aggregator && bun run reset-cursor",
+    "build": "bun run --filter '*' build",
+    "typecheck": "bun run --filter '*' typecheck"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.6.3"
+  }
+}

@@ -1,0 +1,24 @@
+node_modules
+.next
+dist
+*.log
+.env
+.env.local
+.DS_Store
+apps/aggregator/data/
+apps/aggregator/data-e2e/
+apps/aggregator/data-playwright/
+apps/aggregator/test/e2e/fixtures/personas.json
+apps/aggregator/fixtures/faucet.json
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+
+# Next.js + Playwright artifacts
+apps/web/.next/
+apps/web/test-results/
+apps/web/playwright-report/
+
+# Bun lockfile is committed; bun's per-project cache isn't.
+.bun/

@@ -1,0 +1,178 @@
+import { Tendermint37Client } from '@cosmjs/tendermint-rpc';
+import { env } from '../env.js';
+import { getDb } from '../db/index.js';
+import { getCollection } from '../chain/lcd.js';
+import { fetchIntentsForAddress } from '../chain/intents.js';
+import { syncIntentsForOwner } from '../db/intents.js';
+import { upsertMarket } from './bootstrap.js';
+import { recordCandle, updateMarketPrice } from '../db/candles.js';
+import {
+  parseUsedApprovalDetails,
+  parseCastVotes,
+  impliedYesPrice,
+  searchHistoricalFills,
+  searchHistoricalVotes,
+  type UsedApprovalDetails,
+} from '../chain/events.js';
+import { recordVote } from '../db/votes.js';
+import { refreshMarketStatusFromVotes } from './status-updater.js';
+
+/**
+ * Tx watcher with two paths:
+ *
+ *   1. **Live subscribeTx** — Tendermint pushes every new tx's events as it
+ *      lands. We parse `usedApprovalDetails` events → derive price + emit a
+ *      candle. We also extract bb1 addresses → refresh their intents so new
+ *      posts + cancels land in the DB immediately.
+ *
+ *   2. **Startup backfill** — for every known market, query Tendermint RPC's
+ *      `/tx_search?query=usedApprovalDetails.collectionId='N'` to walk every
+ *      historical fill on that market. This catches everything that happened
+ *      pre-aggregator (or between resets).
+ *
+ * The price logic mirrors the indexer (handleTransfers.ts:getDetailsFromDoc):
+ *   price = sum(non-fee coinTransfers.Amount) / sum(balances.amount)
+ */
+export async function startTxWatcher(): Promise<() => void> {
+  // Re-run backfill on a slow loop so it sweeps up:
+  //   - fills that happened before bootstrap had indexed the market
+  //   - any new markets discovered later
+  // recordCandle is idempotent (upsert on bucket_ts), so this is safe to repeat.
+  backfillHistoricalFills().catch((e) => console.error('[tx-watcher] backfill:', e));
+  const backfillTimer = setInterval(() => {
+    backfillHistoricalFills().catch((e) => console.error('[tx-watcher] backfill:', e));
+  }, 30_000);
+
+  const client = await Tendermint37Client.connect(env.tendermintWsUrl);
+  console.log('[tx-watcher] subscribed to live tx events at', env.tendermintWsUrl);
+  const stream = client.subscribeTx();
+  const sub = stream.subscribe({
+    next: (evt: unknown) => {
+      handleLiveTx(evt).catch((e) => console.error('[tx-watcher]', e));
+    },
+    error: (err) => console.error('[tx-watcher] stream error:', err),
+    complete: () => console.log('[tx-watcher] stream complete'),
+  });
+  return () => {
+    clearInterval(backfillTimer);
+    sub.unsubscribe();
+    client.disconnect();
+  };
+}
+
+/**
+ * Process a live tx event from Tendermint subscribeTx. The cosmjs payload
+ * shape is `{ tx, hash, height, events, result }` — events is the array we
+ * want; result may also carry events depending on the version.
+ */
+async function handleLiveTx(evt: unknown): Promise<void> {
+  const e = evt as { events?: any[]; result?: { events?: any[] } };
+  const events = e.events ?? e.result?.events ?? [];
+  if (!Array.isArray(events) || !events.length) return;
+
+  await ingestEvents(events);
+}
+
+/**
+ * Common processing for a list of chain events. (1) Record any fill-derived
+ * price candle, (2) refresh any address mentioned so its intents stay current.
+ */
+async function ingestEvents(events: any[]): Promise<void> {
+  // 1) Fill candles from usedApprovalDetails.
+  const fills = parseUsedApprovalDetails(events);
+  for (const f of fills) {
+    if (!isKnownMarket(f.collectionId)) continue;
+    recordFill(f);
+  }
+
+  // 2) Votes — tally locally + recompute status. The chain's REST /get_votes
+  // endpoint can't be hit with empty `approverAddress` (grpc-gateway path),
+  // so we mirror the chain's tally from the tx event stream instead.
+  const votes = parseCastVotes(events);
+  const touched = new Set<string>();
+  for (const v of votes) {
+    if (!isKnownMarket(v.collectionId)) continue;
+    recordVote(v);
+    touched.add(v.collectionId);
+  }
+  for (const cid of touched) refreshMarketStatusFromVotes(cid);
+
+  // 3) Address-driven intent refresh — catches new posts and cancels for
+  // wallets that aren't yet in our DB.
+  const addresses = extractAddresses(events);
+  if (addresses.size > 0) await refreshIntentsFor(addresses);
+}
+
+function recordFill(f: UsedApprovalDetails): void {
+  const price = impliedYesPrice(f);
+  if (price === null) return; // mint / pair-redeem / fee-only — skip
+  recordCandle(f.collectionId, price, 1 - price);
+  updateMarketPrice(f.collectionId, price, 1 - price);
+  const side = f.balances[0]?.tokenIds?.[0]?.start === '1' ? 'YES' : 'NO';
+  console.log(`[tx-watcher] fill #${f.collectionId} ${side} ${f.balances[0]?.amount} → YES=${price.toFixed(4)} (${f.from.slice(0, 10)}…→${f.to.slice(0, 10)}…)`);
+}
+
+function isKnownMarket(collectionId: string): boolean {
+  const r = getDb().prepare('SELECT 1 FROM markets WHERE collection_id = ?').get(collectionId);
+  return !!r;
+}
+
+function extractAddresses(events: any[]): Set<string> {
+  const out = new Set<string>();
+  for (const e of events ?? []) {
+    for (const a of e.attributes ?? []) {
+      const v = typeof a.value === 'string' ? a.value : '';
+      if (v.startsWith('bb1') && v.length >= 30) out.add(v.replace(/^"|"$/g, ''));
+    }
+  }
+  return out;
+}
+
+async function refreshIntentsFor(addresses: Set<string>): Promise<void> {
+  const markets = getDb().prepare('SELECT collection_id FROM markets').all() as Array<{ collection_id: string }>;
+  if (!markets.length) return;
+  for (const addr of addresses) {
+    for (const m of markets) {
+      try {
+        const live = await fetchIntentsForAddress(m.collection_id, addr);
+        // syncIntentsForOwner upserts current chain state + flips disappeared
+        // intents to used=1. We intentionally DO NOT emit a price candle from
+        // the disappearance — cancels look identical to fills here, and the
+        // usedApprovalDetails event (above) is the source of truth for trades.
+        syncIntentsForOwner(addr, m.collection_id, live);
+      } catch {
+        // address may not have a balance store on this collection — ignore
+      }
+    }
+  }
+}
+
+/**
+ * Walk every known market's historical fill events via Tendermint RPC. Idempotent:
+ * `recordCandle` is upsert-keyed by `(collection_id, timeframe, bucket_ts)`
+ * so re-running just refreshes the same candle.
+ */
+async function backfillHistoricalFills(): Promise<void> {
+  const markets = getDb().prepare('SELECT collection_id FROM markets').all() as Array<{ collection_id: string }>;
+  if (!markets.length) return;
+  let fillTotal = 0;
+  let voteTotal = 0;
+  for (const m of markets) {
+    try {
+      const fills = await searchHistoricalFills(m.collection_id, 200);
+      for (const f of fills) recordFill(f);
+      fillTotal += fills.length;
+    } catch (e) {
+      console.warn(`[tx-watcher] fill backfill failed for #${m.collection_id}:`, (e as Error).message);
+    }
+    try {
+      const votes = await searchHistoricalVotes(m.collection_id, 200);
+      for (const v of votes) recordVote(v);
+      if (votes.length > 0) refreshMarketStatusFromVotes(m.collection_id);
+      voteTotal += votes.length;
+    } catch (e) {
+      console.warn(`[tx-watcher] vote backfill failed for #${m.collection_id}:`, (e as Error).message);
+    }
+  }
+  console.log(`[tx-watcher] backfill: ${fillTotal} fills, ${voteTotal} votes across ${markets.length} markets`);
+}
