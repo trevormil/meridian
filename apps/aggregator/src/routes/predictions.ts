@@ -113,7 +113,7 @@ predictions.post('/predictions/:collectionId/refresh-fills', async (c) => {
  */
 predictions.get('/predictions/sparklines', (c) => {
   const idsParam = c.req.query('ids') ?? '';
-  const tf = (c.req.query('timeframe') ?? '10m') as '10m' | '1h' | '1d';
+  const tf = (c.req.query('timeframe') ?? '10m') as '1m' | '10m' | '1h' | '1d';
   const points = Math.min(60, Math.max(2, Number(c.req.query('points') ?? '24')));
   const ids = idsParam
     .split(',')
@@ -211,7 +211,7 @@ predictions.get('/predictions/:collectionId', (c) => {
 
 predictions.get('/predictions/:collectionId/prices', (c) => {
   const id = c.req.param('collectionId');
-  const tf = (c.req.query('timeframe') ?? '1h') as '10m' | '1h' | '1d';
+  const tf = (c.req.query('timeframe') ?? '1h') as '1m' | '10m' | '1h' | '1d';
   const rows = getDb()
     .prepare(
       'SELECT ts, yes_price, no_price, open, high, low, close FROM price_history WHERE collection_id = ? AND timeframe = ? ORDER BY ts ASC',

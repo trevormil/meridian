@@ -3,7 +3,8 @@ import { publish, channel } from '../pubsub.js';
 import { snapshotMarket, snapshotMarkets, snapshotCandle } from '../snapshots.js';
 
 const RETAIN_PER_TIMEFRAME = 125;
-const TIMEFRAMES = ['10m', '1h', '1d'] as const;
+const TIMEFRAMES = ['1m', '10m', '1h', '1d'] as const;
+export type Timeframe = (typeof TIMEFRAMES)[number];
 
 /**
  * In-memory cache of the last YES close we published for each (market,
@@ -17,8 +18,12 @@ function lastKey(collectionId: string, timeframe: string): string {
   return `${collectionId}|${timeframe}`;
 }
 
-export function bucketStart(ts: number, timeframe: '10m' | '1h' | '1d'): number {
-  const ms = timeframe === '10m' ? 600_000 : timeframe === '1h' ? 3_600_000 : 86_400_000;
+export function bucketStart(ts: number, timeframe: Timeframe): number {
+  const ms =
+    timeframe === '1m' ? 60_000
+    : timeframe === '10m' ? 600_000
+    : timeframe === '1h' ? 3_600_000
+    : 86_400_000;
   return Math.floor(ts / ms) * ms;
 }
 

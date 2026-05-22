@@ -27,7 +27,7 @@ interface Props {
   collectionId: string;
 }
 
-const TIMEFRAMES = ['10m', '1h', '1d'] as const;
+const TIMEFRAMES = ['1m', '10m', '1h', '1d'] as const;
 type Timeframe = (typeof TIMEFRAMES)[number];
 
 export function PriceChart({ collectionId }: Props) {

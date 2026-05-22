@@ -75,7 +75,7 @@ export const aggregator = {
   getMarket: (id: string) =>
     get<{ prediction: MarketDto; collection: unknown }>(`/predictions/${id}`).then((r) => r.prediction),
   getMarketRaw: (id: string) => get<{ prediction: MarketDto; collection: unknown }>(`/predictions/${id}`),
-  getPrices: (id: string, timeframe: '10m' | '1h' | '1d' = '1h') =>
+  getPrices: (id: string, timeframe: '1m' | '10m' | '1h' | '1d' = '1h') =>
     get<{ prices: { yes: PricePoint[]; no: PricePoint[] } }>(`/predictions/${id}/prices?timeframe=${timeframe}`).then(
       (r) => r.prices,
     ),
