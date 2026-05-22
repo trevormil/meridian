@@ -45,11 +45,12 @@ export async function getBotSigner(): Promise<{ client: BitBadgesSigningClient; 
     cosmosChainId: 'bitbadges-1',
     evmChainId: 90123,
     evmRpcUrl: env.rpcHttpUrl,
-    // The SDK default gas limit (400k) is too low for the seeder's multi-msg
-    // approval batches (~10-14k gas/order → a 50-order batch needs ~500k+),
-    // which reverted with out-of-gas. The bot has ample BADGE for the larger
-    // fee, so give it generous headroom.
-    defaultGasLimit: 2_000_000,
+    // Right-sized for a CHUNK=20 approval batch (~250k gas after the quadratic
+    // overlap check) with margin. NOT higher: gasWanted reserves space in the
+    // block's gas meter, so an oversized limit (we tried 2M) lets only a few
+    // txs per block → seed txs queue + miss the commit window. 600k commits
+    // promptly AND covers the batch.
+    defaultGasLimit: 600_000,
   });
   cachedAddress = fx.address;
   return { client: cachedClient, address: cachedAddress };
