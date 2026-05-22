@@ -1,9 +1,9 @@
-import { Tendermint37Client } from '@cosmjs/tendermint-rpc';
 import { buildPredictionMarketDepositMsg } from 'bitbadges';
-import { env } from '../env.js';
 import { getDb } from '../db/index.js';
 import { listIntentsByCollection } from '../db/intents.js';
 import { getBotSigner, botBroadcast } from './signer.js';
+import { searchHistoricalFills } from '../chain/events.js';
+import { recordFill } from '../workers/tx-watcher.js';
 
 /**
  * Demo market-maker bot (replaces the arbitrage bot).
@@ -22,6 +22,11 @@ import { getBotSigner, botBroadcast } from './signer.js';
  * orders inside the band. No arbitrage, no order-crossing — just a counterparty
  * that always takes a fair-priced trade.
  */
+// The chain→aggregator WS (subscribeNewBlock/Tx) hangs from inside the Docker
+// container (host.docker.internal upgrade fails), so we drive the fill scan
+// with a fast timer instead of a block subscription. 800ms ≈ ~every block at
+// 500ms timeout_commit; reliable and not WS-dependent.
+const SCAN_INTERVAL_MS = 800;
 const BAND_LO = 0.4;
 const BAND_HI = 0.6;
 // Skip absurdly large orders so a single fill can't drain the bot. Demo orders
@@ -198,6 +203,15 @@ async function executeFill(signer: { client: any; address: string }, c: FillCand
   const r = await botBroadcast(signer, envelopes, tag);
   if (r?.code === 0) {
     console.log(`[mm] ${tag} filled → tx ${r.txHash.slice(0, 12)}…`);
+    // Record + publish the fill immediately so the activity feed, chart, and
+    // price update in realtime — the live chain WS hangs in this container, so
+    // we can't rely on the tx-watcher catching it; instead we scan THIS market's
+    // recent fills (recordFill is idempotent + publishes candle/market/fills).
+    try {
+      for (const f of await searchHistoricalFills(c.collectionId, 30)) recordFill(f);
+    } catch (e) {
+      console.warn(`[mm] post-fill sync failed for #${c.collectionId}:`, (e as Error).message);
+    }
   } else if (r) {
     cooldown(c, `revert-${r.code}`);
   } else {
@@ -241,23 +255,8 @@ export function startMarketMakerBot(): () => void {
     }
   };
 
-  // Run the fill scan on EVERY new block (so a user order is consumed within
-  // ~one block of landing). The inFlight guard skips a block if the previous
-  // scan's fills are still broadcasting — the next block re-checks anyway.
-  let cleanup = () => {};
-  void (async () => {
-    const client = await Tendermint37Client.connect(env.tendermintWsUrl);
-    const sub = client.subscribeNewBlock().subscribe({
-      next: () => void tick(),
-      error: (e) => console.error('[mm] block stream error:', e),
-    });
-    cleanup = () => {
-      sub.unsubscribe();
-      client.disconnect();
-    };
-    void tick(); // sweep once immediately on connect
-    console.log(`[mm] market-maker armed — auto-fills ${BAND_LO}–${BAND_HI} band every block`);
-  })().catch((e) => console.error('[mm] connect failed:', e));
-
-  return () => cleanup();
+  void tick(); // sweep once on startup
+  const timer = setInterval(tick, SCAN_INTERVAL_MS);
+  console.log(`[mm] market-maker armed — auto-fills ${BAND_LO}–${BAND_HI} band every ${SCAN_INTERVAL_MS}ms`);
+  return () => clearInterval(timer);
 }
