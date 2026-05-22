@@ -1,6 +1,6 @@
 import { getDb } from './index.js';
 import { publish, channel } from '../pubsub.js';
-import { snapshotMarket, snapshotCandle } from '../snapshots.js';
+import { snapshotMarket, snapshotMarkets, snapshotCandle } from '../snapshots.js';
 
 const RETAIN_PER_TIMEFRAME = 125;
 const TIMEFRAMES = ['10m', '1h', '1d'] as const;
@@ -104,5 +104,9 @@ export function updateMarketPrice(collectionId: string, yesPrice: number, noPric
   getDb()
     .prepare('UPDATE markets SET yes_price = ?, no_price = ?, last_synced = ? WHERE collection_id = ?')
     .run(yesPrice, noPrice, Date.now(), collectionId);
+  // Single-market subscribers (detail page).
   publish(channel.market(collectionId), snapshotMarket(collectionId));
+  // ALSO refresh the browse list so market cards reflect the new price live.
+  // Only called on an actual trade (via recordFill), so this isn't a hot loop.
+  publish(channel.markets(), snapshotMarkets());
 }

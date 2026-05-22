@@ -4,8 +4,8 @@ import { getBalance, getBankBalances, sumYesNo } from '../chain/lcd.js';
 import { fetchIntentsForAddress } from '../chain/intents.js';
 import { upsertIntents, syncIntentsForOwner, listIntentsByCollection, listIntentsByOwner } from '../db/intents.js';
 import { bootstrapScan } from '../workers/bootstrap.js';
-import { searchHistoricalFills, searchHistoricalVotes, impliedYesPrice } from '../chain/events.js';
-import { recordCandle, updateMarketPrice } from '../db/candles.js';
+import { searchHistoricalFills, searchHistoricalVotes } from '../chain/events.js';
+import { recordFill } from '../workers/tx-watcher.js';
 import { recordVote } from '../db/votes.js';
 import { refreshMarketStatusFromVotes } from '../workers/status-updater.js';
 import { snapshotFills } from '../snapshots.js';
@@ -74,11 +74,11 @@ predictions.post('/predictions/:collectionId/refresh-fills', async (c) => {
   let votes = 0;
   try {
     const fillEvents = await searchHistoricalFills(id, 200);
+    // Use the same recordFill path as the live watcher so a rescan populates
+    // the fills/activity table + volume (not just price/candles) and is
+    // idempotent — previously this lighter path left the Activity feed empty.
     for (const f of fillEvents) {
-      const price = impliedYesPrice(f);
-      if (price === null) continue;
-      recordCandle(id, price, 1 - price);
-      updateMarketPrice(id, price, 1 - price);
+      recordFill(f);
       fills++;
     }
   } catch (e) {

@@ -200,7 +200,7 @@ function recordHolding(address: string, collectionId: string): void {
   recordHoldingStmt().run(address, collectionId);
 }
 
-function recordFill(f: UsedApprovalDetails): void {
+export function recordFill(f: UsedApprovalDetails): void {
   const tokenStart = f.balances[0]?.tokenIds?.[0]?.start;
   const side = tokenStart === '1' ? 'yes' : 'no';
   const tokenAmount = f.balances[0]?.amount ?? '0';
