@@ -41,10 +41,25 @@ export async function startTxWatcher(): Promise<() => void> {
   //   - fills that happened before bootstrap had indexed the market
   //   - any new markets discovered later
   // recordCandle is idempotent (upsert on bucket_ts), so this is safe to repeat.
-  backfillHistoricalFills().catch((e) => console.error('[tx-watcher] backfill:', e));
-  const backfillTimer = setInterval(() => {
-    backfillHistoricalFills().catch((e) => console.error('[tx-watcher] backfill:', e));
-  }, 30_000);
+  // Overlap guard: a full sweep (~0.9s tx_search × ~90 markets ≈ 80s) takes
+  // longer than the interval. Without the guard, overlapping runs all restart
+  // from the first market + hammer the chain, so later markets never get
+  // reached (the holdings index stalls). The guard lets one sweep finish
+  // before the next starts.
+  let backfilling = false;
+  const runBackfill = async () => {
+    if (backfilling) return;
+    backfilling = true;
+    try {
+      await backfillHistoricalFills();
+    } catch (e) {
+      console.error('[tx-watcher] backfill:', e);
+    } finally {
+      backfilling = false;
+    }
+  };
+  void runBackfill();
+  const backfillTimer = setInterval(() => void runBackfill(), 30_000);
 
   const client = await Tendermint37Client.connect(env.tendermintWsUrl);
   console.log('[tx-watcher] subscribed to live tx events at', env.tendermintWsUrl);
