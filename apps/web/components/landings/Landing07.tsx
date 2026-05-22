@@ -4,6 +4,7 @@ import { useRealtime } from '@/lib/useRealtime';
 import { ch } from '@/lib/realtime';
 import type { MarketDto } from '@/lib/aggregator';
 import { useCloseCountdown, BrowseCta } from './Shared';
+import { MarketCard } from '@/components/prediction/MarketCard';
 import { clsx } from 'clsx';
 import Link from 'next/link';
 
@@ -124,25 +125,12 @@ export function Landing07() {
             All →
           </Link>
         </div>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
-          {active.slice(0, 12).map((m) => {
-            const parsed = (m.name ?? '').match(/^([A-Z]{1,6})\s*[>≥]\s*\$([0-9,]+)/);
-            return (
-              <Link
-                key={m.collectionId}
-                href={`/markets/${m.collectionId}`}
-                className="group rounded border border-border bg-panel p-3 transition-colors hover:border-gold/40"
-              >
-                {parsed && (
-                  <div className="font-mono text-[10px] tracking-[0.14em] text-muted">{parsed[1]}</div>
-                )}
-                <div className="mt-1 truncate font-display text-base text-ink group-hover:text-gold-bright">
-                  {parsed ? `≥ $${parsed[2]}` : m.name}
-                </div>
-                <div className="mt-2 font-mono text-sm text-yes">{(m.yesPrice * 100).toFixed(0)}%</div>
-              </Link>
-            );
-          })}
+        {/* Full market cards — same component as the browse page (sparkline,
+            probability bar, volume), not the condensed tiles. */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {active.slice(0, 6).map((m) => (
+            <MarketCard key={m.collectionId} market={m} />
+          ))}
         </div>
       </section>
     </div>
