@@ -74,6 +74,38 @@ export async function getBalance(collectionId: string, address: string): Promise
   }
 }
 
+/** Cosmos-bank balances for an address (used for the USDC backing denom). */
+export async function getBankBalances(address: string): Promise<Array<{ denom: string; amount: string }>> {
+  try {
+    const res = await lcdGet<{ balances: Array<{ denom: string; amount: string }> }>(
+      `/cosmos/bank/v1beta1/balances/${address}?pagination.limit=1000`,
+    );
+    return res.balances ?? [];
+  } catch (e) {
+    if (e instanceof LcdNotFoundError) return [];
+    throw e;
+  }
+}
+
+/** Sum an address's YES (token id 1) + NO (token id 2) holdings from a
+ *  tokenization balance store. Mirrors the FE sumYesNo. */
+export function sumYesNo(store: unknown): { yes: bigint; no: bigint } {
+  let yes = 0n;
+  let no = 0n;
+  const balances = (store as { balances?: Array<{ amount?: string; tokenIds?: Array<{ start: string; end: string }> }> } | null)?.balances;
+  if (!balances) return { yes, no };
+  for (const entry of balances) {
+    const amt = BigInt(entry.amount ?? '0');
+    for (const range of entry.tokenIds ?? []) {
+      const s = Number(range.start);
+      const e = Number(range.end);
+      if (s <= 1 && e >= 1) yes += amt;
+      if (s <= 2 && e >= 2) no += amt;
+    }
+  }
+  return { yes, no };
+}
+
 export interface VoteAggregate {
   totalYesWeight: number;
   totalNoWeight: number;

@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useWallet } from '@/contexts/WalletContext';
-import { getBankBalances, getUserBalance, type Coin } from '@/lib/chain/lcd';
 import { aggregator, type IntentDto, type MarketDto } from '@/lib/aggregator';
 import { useRealtime } from '@/lib/useRealtime';
 import { ch } from '@/lib/realtime';
@@ -13,7 +12,6 @@ import { CoinDisplay } from '@/components/ui/CoinDisplay';
 import { CoinIcon } from '@/components/ui/CoinIcon';
 import { Empty, Skeleton } from '@/components/ui/Empty';
 import { Button } from '@/components/ui/Button';
-import { sumYesNo } from '@/lib/prediction-market/balances';
 import { env } from '@/lib/env';
 import { FaucetCard } from '@/components/wallet/FaucetCard';
 import { UsdcSymbol } from '@/components/ui/UsdcSymbol';
@@ -214,23 +212,20 @@ export default function PortfolioPage() {
     let cancel = false;
     setLoading(true);
     (async () => {
-      // YES/NO live in tokenization (x/tokenization UserBalanceStore), NOT
-      // cosmos-bank — so we have to query each known market's balance store
-      // individually. Bank is only used for the USDC backing denom.
-      const bank = await getBankBalances(address);
-      if (cancel) return;
-      const stores = await Promise.all(
-        markets.map(async (m) => ({ market: m, store: await getUserBalance(m.collectionId, address) })),
-      );
+      // One aggregator call returns all YES/NO positions + USDC bank balance —
+      // the per-market chain reads happen server-side (localhost, parallel)
+      // instead of ~45 round-trips from the browser. Always a live read.
+      const byId = new Map(markets.map((m) => [m.collectionId, m]));
+      const { positions: raw, usdc: usdcStr } = await aggregator.getPositions(address);
       if (cancel) return;
       const pos: Position[] = [];
-      for (const { market, store } of stores) {
-        const { yes, no } = sumYesNo(store);
-        if (yes > 0n || no > 0n) pos.push({ market, yes, no });
+      for (const p of raw) {
+        const market = byId.get(p.collectionId);
+        if (!market) continue; // market metadata not loaded yet — skip
+        pos.push({ market, yes: BigInt(p.yes), no: BigInt(p.no) });
       }
       setPositions(pos);
-      const u = bank.find((b: Coin) => b.denom === env.usdcDenom);
-      setUsdc(BigInt(u?.amount ?? '0'));
+      setUsdc(BigInt(usdcStr ?? '0'));
       setLoading(false);
     })().catch(() => setLoading(false));
     // No teardown wired here — `cancel` is read by the async closure above so

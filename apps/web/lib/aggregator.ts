@@ -79,6 +79,13 @@ export const aggregator = {
     get<{ prices: { yes: PricePoint[]; no: PricePoint[] } }>(`/predictions/${id}/prices?timeframe=${timeframe}`).then(
       (r) => r.prices,
     ),
+  // All YES/NO positions + USDC bank balance for an address in one server-side
+  // round-trip (the aggregator batches the per-market chain reads). Never
+  // cached — always a live read.
+  getPositions: (address: string) =>
+    get<{ positions: Array<{ collectionId: string; yes: string; no: string }>; usdc: string }>(
+      `/predictions/positions/${address}`,
+    ),
   listIntents: (collectionId: string, includeAll = false) =>
     get<{ intents: IntentDto[] }>(`/intents?collectionId=${collectionId}&includeAll=${includeAll}`).then(
       (r) => r.intents,

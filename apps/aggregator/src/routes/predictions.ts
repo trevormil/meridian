@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { getDb } from '../db/index.js';
+import { getBalance, getBankBalances, sumYesNo } from '../chain/lcd.js';
 import { fetchIntentsForAddress } from '../chain/intents.js';
 import { upsertIntents, syncIntentsForOwner, listIntentsByCollection, listIntentsByOwner } from '../db/intents.js';
 import { bootstrapScan } from '../workers/bootstrap.js';
@@ -140,6 +141,54 @@ predictions.get('/predictions/sparklines', (c) => {
   // rapid re-requests during scroll.
   c.header('cache-control', 'public, max-age=15');
   return c.json({ sparklines });
+});
+
+/**
+ * Positions for an address — YES/NO holdings across every market + the USDC
+ * bank balance, in ONE response. Replaces the FE firing ~45 per-market chain
+ * queries from the browser (over the internet, through Caddy): we run those
+ * queries server-side (localhost→chain is fast + parallel) and return in a
+ * single response.
+ *
+ * NOT cached — always a live chain read. The FE only calls this on mount + on
+ * tx-confirm (not in a hot loop), so the dedup a cache would buy isn't worth
+ * any staleness: a position must always reflect the latest committed block
+ * (e.g. immediately after a deposit / fill / redeem). no-store keeps the
+ * browser from holding a copy too.
+ *
+ * MUST precede /predictions/:collectionId so "positions" isn't captured as id.
+ *
+ *   GET /predictions/positions/:address
+ *   → { positions: [{ collectionId, yes, no }], usdc }
+ */
+predictions.get('/predictions/positions/:address', async (c) => {
+  const address = c.req.param('address');
+  if (!/^bb1[0-9a-z]{38,}$/.test(address)) return c.json({ error: 'bad_address' }, 400);
+
+  const markets = getDb()
+    .prepare('SELECT collection_id, deposit_denom FROM markets ORDER BY created_at DESC LIMIT 200')
+    .all() as Array<{ collection_id: string; deposit_denom: string | null }>;
+
+  // Fire all balance reads in parallel against the local chain LCD.
+  const [bank, stores] = await Promise.all([
+    getBankBalances(address),
+    Promise.all(
+      markets.map(async (m) => ({ id: m.collection_id, store: await getBalance(m.collection_id, address) })),
+    ),
+  ]);
+
+  const positions = stores
+    .map(({ id, store }) => {
+      const { yes, no } = sumYesNo(store);
+      return { collectionId: id, yes: yes.toString(), no: no.toString() };
+    })
+    .filter((p) => p.yes !== '0' || p.no !== '0');
+
+  const usdcDenom = markets[0]?.deposit_denom ?? 'ustake';
+  const usdc = bank.find((b) => b.denom === usdcDenom)?.amount ?? '0';
+
+  c.header('cache-control', 'no-store');
+  return c.json({ positions, usdc });
 });
 
 predictions.get('/predictions/:collectionId', (c) => {
