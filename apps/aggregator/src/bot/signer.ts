@@ -94,12 +94,13 @@ async function doBotBroadcast(
   if (!envelopes.length) return null;
   const messages = encodeMsgsFromJson(envelopes as any[]);
   // Zero-fee txs (testnet, min-gas-prices=0). amount '0' overrides the SDK's
-  // computed gasLimit×price fee, so the bot never spends ubadge on gas — the
-  // seeder + arb bot would otherwise drain their BADGE over thousands of txs
-  // (which is exactly what stalled seeding). gas still covers execution
-  // (the overlap check needs the budget); only the fee paid is 0.
+  // computed fee, so the bot never spends ubadge on gas. gas is set very high
+  // (15M) because fills/deposits on over-stuffed markets cost 3-4M gas at
+  // WritePerByte, and the block max_gas is -1 (unlimited) so a high limit is
+  // free — it just guarantees the bot's arb fills + seeds don't OOG. (A 1M cap
+  // here is what stopped the arb bot filling orders on heavy markets.)
   const r = await signer.client.signAndBroadcast(messages as any, {
-    fee: { amount: '0', denom: 'ubadge', gas: '1000000' },
+    fee: { amount: '0', denom: 'ubadge', gas: '15000000' },
   } as any);
   if (!r.success) {
     console.warn(`[bot] ${label} mempool-rejected: ${r.error ?? r.code}`);

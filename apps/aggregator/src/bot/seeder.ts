@@ -155,6 +155,17 @@ async function runOnce(): Promise<void> {
   }
 }
 
+/** Pull the bot's on-chain intents for a collection into the DB so the order
+ *  book + arb bot see them immediately (don't wait on the live WS stream). */
+async function syncBotIntents(collectionId: string, address: string): Promise<void> {
+  try {
+    const live = await fetchIntentsForAddress(collectionId, address);
+    syncIntentsForOwner(address, collectionId, live);
+  } catch (e) {
+    console.warn(`[seeder] #${collectionId} intent sync failed:`, (e as Error).message);
+  }
+}
+
 async function seedOne(
   signer: { client: any; address: string },
   collectionId: string,
@@ -205,6 +216,7 @@ async function seedOne(
   // that it's plainly already liquid. Mark seeded instead of failing + looping.
   if (dep && dep.code === 11) {
     console.log(`[seeder] #${collectionId} deposit overlap-gas — already over-seeded, marking seeded`);
+    await syncBotIntents(collectionId, signer.address);
     mark(collectionId, 'seeded');
     return;
   }
@@ -249,6 +261,7 @@ async function seedOne(
     // not failed: it has ample liquidity and re-trying only loops.
     if (ord && ord.code === 11) {
       console.log(`[seeder] #${collectionId} overlap-gas at slice ${i} — already over-seeded, marking seeded`);
+      await syncBotIntents(collectionId, signer.address);
       mark(collectionId, 'seeded');
       return;
     }
@@ -256,16 +269,9 @@ async function seedOne(
   }
   const totalIntents = all.length;
 
-  // The live tx-watcher should have picked up the bot's address from the
-  // approval-set events and refreshed its intents — but tx events sometimes
-  // miss in the WS stream. Force an explicit sync so the order book and the
-  // arbitrage bot both see the freshly-posted ladder immediately.
-  try {
-    const live = await fetchIntentsForAddress(collectionId, signer.address);
-    syncIntentsForOwner(signer.address, collectionId, live);
-  } catch (e) {
-    console.warn(`[seeder] #${collectionId} post-broadcast intent sync failed:`, (e as Error).message);
-  }
+  // Force an explicit sync so the order book + arb bot see the freshly-posted
+  // ladder immediately (the live WS stream sometimes misses approval events).
+  await syncBotIntents(collectionId, signer.address);
 
   mark(collectionId, 'seeded');
   console.log(
