@@ -21,6 +21,7 @@ import { MAG7, type Ticker } from './constants.js';
 import { fetchPriceQuote } from './prices.js';
 import { getOracleSigner, oracleBroadcast } from './signer.js';
 import { ensureMeridianTables, listUnsettledForDate, markSettled, easternTradingDay } from './db.js';
+import { assertTradingDay } from './trading-calendar.js';
 
 /** Read the cached collection JSON for `collectionId` from the aggregator DB. */
 function loadCollectionJson(collectionId: string): any | null {
@@ -134,7 +135,21 @@ async function settleOne(
 
 async function main(): Promise<void> {
   ensureMeridianTables();
-  const closeDate = easternTradingDay();
+  // Default: settle today's trading day. Override with MERIDIAN_CLOSE_DATE
+  // (YYYY-MM-DD) to re-settle a day the cron missed — e.g. after an outage.
+  // The Yahoo fetch returns the most-recent available close, so this is only
+  // correct for the latest still-unsettled trading day (you can't fetch an
+  // arbitrary historical close through this endpoint).
+  const closeDate = process.env.MERIDIAN_CLOSE_DATE || easternTradingDay();
+  // Skip on NYSE holidays unless an explicit close-date override is set (a
+  // manual re-settle of a missed day) or MERIDIAN_FORCE=1.
+  if (
+    !process.env.MERIDIAN_CLOSE_DATE &&
+    !process.env.MERIDIAN_FORCE &&
+    !assertTradingDay(closeDate, 'meridian:evening')
+  ) {
+    return;
+  }
   console.log(`[meridian:evening] run for trading day ${closeDate}`);
 
   const unsettled = listUnsettledForDate(closeDate);
