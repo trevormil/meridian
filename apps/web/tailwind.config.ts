@@ -54,9 +54,12 @@ const config: Config = {
         'accent-2': '#D93826',
       },
       fontFamily: {
-        display: ['var(--font-fraunces)', 'ui-serif', 'Georgia', 'serif'],
-        sans: ['var(--font-switzer)', 'Switzer', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        // Clay design language: Baloo 2 (rounded) for display + body, mono for numerics.
+        display: ['var(--font-baloo)', 'ui-rounded', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-baloo)', 'ui-rounded', 'system-ui', 'sans-serif'],
         mono: ['var(--font-mono)', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+        // Hero wordmark only — the typographic abstraction of the logo mark.
+        hero: ['var(--font-hero)', 'var(--font-baloo)', 'system-ui', 'sans-serif'],
       },
       backgroundImage: {
         'panel-gradient':
@@ -77,6 +80,24 @@ const config: Config = {
         'glow-no':
           '0 0 0 1px rgba(217,56,38,0.35), 0 8px 32px -8px rgba(217,56,38,0.35)',
         'hairline-t': 'inset 0 1px 0 rgba(245,239,223,0.04)',
+        // ── Clay system: puffy depth from shadows, not borders ──
+        // A solid "base" offset (the block sitting on a surface) + soft ambient
+        // blur + an inset top highlight (light catching the rounded top edge).
+        clay: '0 12px 0 -3px #0A0705, 0 22px 40px -18px rgba(0,0,0,0.7), inset 0 2px 6px rgba(245,239,223,0.07)',
+        'clay-sm': '0 6px 0 -2px #0A0705, 0 12px 22px -12px rgba(0,0,0,0.65), inset 0 1px 4px rgba(245,239,223,0.06)',
+        // Pressed: base shrinks (block pushed toward the surface).
+        'clay-pressed': '0 3px 0 -2px #0A0705, 0 6px 14px -10px rgba(0,0,0,0.6), inset 0 1px 3px rgba(245,239,223,0.05)',
+        // Recessed (inputs): carved into the surface.
+        'clay-inset': 'inset 0 3px 7px rgba(0,0,0,0.55), inset 0 -1px 2px rgba(245,239,223,0.05)',
+        // Gold CTA puffy base.
+        'clay-gold': '0 10px 0 -3px #8A6A28, 0 18px 30px -16px rgba(232,177,74,0.5), inset 0 2px 4px rgba(255,255,255,0.25)',
+        'clay-gold-pressed': '0 3px 0 -2px #8A6A28, 0 6px 14px -10px rgba(232,177,74,0.45), inset 0 1px 3px rgba(255,255,255,0.2)',
+      },
+      borderRadius: {
+        // Clay radii — soft, generous. Cards big, controls pill-ish.
+        clay: '22px',
+        'clay-lg': '28px',
+        'clay-sm': '14px',
       },
       animation: {
         'slide-up': 'slideUp 360ms cubic-bezier(0.16, 1, 0.3, 1) both',

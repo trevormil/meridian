@@ -4,8 +4,9 @@ import { clsx } from 'clsx';
 import { type InputHTMLAttributes, forwardRef } from 'react';
 
 /**
- * Input field. Sharper corners than the previous design + gold focus ring.
- * Number inputs auto-pick up tabular figures via the global mono class.
+ * Input field — clay "recessed" treatment: carved into the surface via an
+ * inset shadow (no border), soft rounded corners, gold focus glow. Number
+ * inputs pick up tabular mono figures.
  */
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input(
   { className, type, ...rest },
@@ -17,9 +18,9 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
       ref={ref}
       type={type}
       className={clsx(
-        'h-10 w-full rounded border border-border bg-bg-deep px-3 text-sm text-ink transition-colors',
+        'h-11 w-full rounded-clay-sm bg-bg-deep px-4 text-sm text-ink shadow-clay-inset transition-shadow',
         'placeholder:text-faint',
-        'focus:border-gold/60 focus:bg-bg-deep focus:outline-none focus:shadow-[0_0_0_4px_rgba(232,177,74,0.10)]',
+        'focus:outline-none focus:shadow-[inset_0_3px_7px_rgba(0,0,0,0.55),0_0_0_3px_rgba(232,177,74,0.25)]',
         'disabled:opacity-50',
         isNumeric && 'font-mono tracking-tight',
         className,

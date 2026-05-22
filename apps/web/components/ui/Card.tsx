@@ -2,17 +2,15 @@ import { clsx } from 'clsx';
 import type { HTMLAttributes } from 'react';
 
 /**
- * Card system — three variants matched to information density:
+ * Card system — "clay" surfaces. Depth comes from puffy shadows (a solid base
+ * offset + soft ambient blur + inset top highlight), not borders. Big soft
+ * radii. Three density variants:
  *
- *   flat   — bare bg-panel, hairline border. Use for body content + tables.
- *   raised — same but lifted with a subtle outer shadow. Use for the primary
- *            content panels on each page.
- *   hero   — bg with a warm gradient + bright hairline + lift. Use for the
- *            most important panel on the page (market detail header, settle).
+ *   flat   — lighter clay (clay-sm), for nested/body content.
+ *   raised — full clay puff. The default content panel.
+ *   hero   — clay puff + warm gradient + larger radius, for the marquee panel.
  *
  * Optional `accent` strip on the left edge — gold / yes / no — for state.
- * Cards intentionally use a small `rounded` radius (4px) not the soft pillowy
- * rounded-2xl that's everywhere in AI-generated UIs.
  */
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
   variant?: 'flat' | 'raised' | 'hero';
@@ -20,22 +18,22 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const variants = {
-  flat: 'bg-panel border-border',
-  raised: 'bg-panel border-border shadow-soft',
-  hero: 'bg-panel bg-panel-gradient border-border-hi shadow-lift',
+  flat: 'bg-panel rounded-clay-sm shadow-clay-sm',
+  raised: 'bg-panel rounded-clay shadow-clay',
+  hero: 'bg-panel bg-panel-gradient rounded-clay-lg shadow-clay',
 };
 
 const accents = {
-  gold: 'border-l-gold/60 border-l-2',
-  yes: 'border-l-yes/60 border-l-2',
-  no: 'border-l-no/60 border-l-2',
+  gold: 'border-l-gold/60 border-l-4',
+  yes: 'border-l-yes/60 border-l-4',
+  no: 'border-l-no/60 border-l-4',
 };
 
 export function Card({ className, variant = 'raised', accent, ...rest }: CardProps) {
   return (
     <div
       className={clsx(
-        'rounded border p-6 transition-colors',
+        'p-6 transition-shadow',
         variants[variant],
         accent && accents[accent],
         className,

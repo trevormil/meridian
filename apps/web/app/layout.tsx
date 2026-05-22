@@ -1,5 +1,5 @@
 import './globals.css';
-import { Fraunces, JetBrains_Mono } from 'next/font/google';
+import { Baloo_2, JetBrains_Mono, Unbounded } from 'next/font/google';
 import { WalletProvider } from '@/contexts/WalletContext';
 import { ConnectButton } from '@/components/wallet/ConnectButton';
 import { RealtimeWarmup } from '@/components/RealtimeWarmup';
@@ -13,14 +13,13 @@ import { HeroAtmosphere } from '@/components/HeroAtmosphere';
 import { MobileNav } from '@/components/MobileNav';
 
 /**
- * Fraunces — Google's contemporary serif. Used sparingly for marquee
- * surfaces (wordmark, market hero, ticker headings). The character of the
- * default cut is plenty without pinning the variable axes (which conflicts
- * with explicit weights in next/font).
+ * Baloo 2 — rounded, friendly display+body face that anchors the "clay"
+ * design language (soft, tactile, toy-like). Used for headings, wordmark,
+ * and body. JetBrains Mono carries all numerics for tabular crispness.
  */
-const fraunces = Fraunces({
+const baloo = Baloo_2({
   subsets: ['latin'],
-  variable: '--font-fraunces',
+  variable: '--font-baloo',
   display: 'swap',
   weight: ['400', '500', '600', '700'],
 });
@@ -30,6 +29,18 @@ const jetbrains = JetBrains_Mono({
   variable: '--font-mono',
   display: 'swap',
   weight: ['400', '500', '600'],
+});
+
+/**
+ * Unbounded — rounded geometric heavy display. Reserved for the brand
+ * wordmark (the typographic abstraction of the logo mark). Pairs with the
+ * clay/Baloo roundness while carrying far more presence at hero scale.
+ */
+const unbounded = Unbounded({
+  subsets: ['latin'],
+  variable: '--font-hero',
+  display: 'swap',
+  weight: ['600', '700', '800'],
 });
 
 export const metadata = {
@@ -53,7 +64,7 @@ export const viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const apiOrigin = process.env.NEXT_PUBLIC_AGGREGATOR_URL;
   return (
-    <html lang="en" className={`${fraunces.variable} ${jetbrains.variable}`}>
+    <html lang="en" className={`${baloo.variable} ${jetbrains.variable} ${unbounded.variable}`}>
       <head>
         {/* Warm the connections first paint depends on: the Switzer webfont
             host (render-blocking @import in globals.css) and the aggregator
@@ -96,7 +107,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 {/* Right cluster — testnet badge + connect. min-w-0 lets it
                     shrink so a connected-wallet pill can't bleed off-screen. */}
                 <div className="ml-auto flex min-w-0 items-center gap-2 sm:ml-0 sm:gap-3">
-                  <span className="hidden items-center gap-1.5 rounded-sm border border-amber/30 bg-amber/5 px-2 py-1 md:inline-flex">
+                  <span className="hidden items-center gap-1.5 rounded-full border border-amber/30 bg-amber/5 px-2.5 py-1 md:inline-flex">
                     <span className="h-1 w-1 rounded-full bg-amber" />
                     <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-amber">
                       Testnet
