@@ -31,7 +31,9 @@ import { getBotSigner, botBroadcast } from './signer.js';
  * partially filled.
  */
 
-const SCAN_INTERVAL_MS = 1_500; // every ~1 block at 1.5s block time
+const SCAN_INTERVAL_MS = 4_000; // ~every 3 blocks — eases chain contention so
+// the seeder's order batches commit (they timed out when this hammered queries
+// every 1.5s on the 2-vCPU node). Still feels live.
 const MIN_PROFIT_USDC = 100n; // 0.0001 USDC base units — anything smaller is fee noise
 
 /**
