@@ -4,6 +4,7 @@ import { listIntentsByCollection } from '../db/intents.js';
 import { getBotSigner, botBroadcast } from './signer.js';
 import { searchHistoricalFills } from '../chain/events.js';
 import { recordFill } from '../workers/tx-watcher.js';
+import { recordCandle, updateMarketPrice } from '../db/candles.js';
 
 /**
  * Demo market-maker bot (replaces the arbitrage bot).
@@ -26,7 +27,7 @@ import { recordFill } from '../workers/tx-watcher.js';
 // container (host.docker.internal upgrade fails), so we drive the fill scan
 // with a fast timer instead of a block subscription. 800ms ≈ ~every block at
 // 500ms timeout_commit; reliable and not WS-dependent.
-const SCAN_INTERVAL_MS = 800;
+const SCAN_INTERVAL_MS = 250;
 const BAND_LO = 0.4;
 const BAND_HI = 0.6;
 // Skip absurdly large orders so a single fill can't drain the bot. Demo orders
@@ -207,12 +208,20 @@ async function executeFill(signer: { client: any; address: string }, c: FillCand
     // price update in realtime — the live chain WS hangs in this container, so
     // we can't rely on the tx-watcher catching it; instead we scan THIS market's
     // recent fills (recordFill is idempotent + publishes candle/market/fills).
-    // Mark the order used so the next 800ms scan doesn't retry an already-
-    // consumed order (Meridian intents are afterOneUse → one fill consumes
-    // them). Without this the bot re-attempts + reverts code=71 until cooldown.
+    // Mark the order used so the next scan doesn't retry an already-consumed
+    // order (Meridian intents are afterOneUse). Without this the bot re-attempts
+    // + reverts code=71 until cooldown.
     getDb()
       .prepare('UPDATE intents SET used = 1, is_active = 0 WHERE collection_id = ? AND owner_address = ? AND approval_id = ?')
       .run(c.collectionId, c.intent.owner_address, c.intent.approval_id);
+    // INSTANT price/chart publish from the fill data we already have — no chain
+    // round-trip — so the chart + cards + price update the moment the fill
+    // commits. (A YES fill at p → yesPrice p; a NO fill at p → yesPrice 1-p.)
+    const yesPrice = c.tokenId === 1 ? c.price : 1 - c.price;
+    recordCandle(c.collectionId, yesPrice, 1 - yesPrice);
+    updateMarketPrice(c.collectionId, yesPrice, 1 - yesPrice);
+    // Then sync the fills table (for the activity feed) — async-ish, fine if it
+    // lands a beat later than the price.
     try {
       for (const f of await searchHistoricalFills(c.collectionId, 30)) recordFill(f);
     } catch (e) {
