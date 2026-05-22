@@ -104,7 +104,7 @@ export function Landing07() {
         </div>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
           {active.slice(0, 12).map((m) => {
-            const parsed = (m.name ?? '').match(/^([A-Z]{1,6})\s*>\s*\$([0-9,]+)/);
+            const parsed = (m.name ?? '').match(/^([A-Z]{1,6})\s*[>≥]\s*\$([0-9,]+)/);
             return (
               <Link
                 key={m.collectionId}
@@ -115,7 +115,7 @@ export function Landing07() {
                   <div className="font-mono text-[10px] tracking-[0.14em] text-muted">{parsed[1]}</div>
                 )}
                 <div className="mt-1 truncate font-display text-base text-ink group-hover:text-gold-bright">
-                  {parsed ? `>$${parsed[2]}` : m.name}
+                  {parsed ? `≥ $${parsed[2]}` : m.name}
                 </div>
                 <div className="mt-2 font-mono text-sm text-yes">{(m.yesPrice * 100).toFixed(0)}%</div>
               </Link>

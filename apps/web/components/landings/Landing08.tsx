@@ -49,7 +49,7 @@ export function Landing08() {
         </div>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {active.slice(0, 9).map((m) => {
-            const parsed = (m.name ?? '').match(/^([A-Z]{1,6})\s*>\s*\$([0-9,]+)/);
+            const parsed = (m.name ?? '').match(/^([A-Z]{1,6})\s*[>≥]\s*\$([0-9,]+)/);
             return (
               <Link
                 key={m.collectionId}
@@ -60,7 +60,7 @@ export function Landing08() {
                   {parsed ? (
                     <>
                       <span className="font-mono text-[10px] text-muted">{parsed[1]}</span>{' '}
-                      <span className="text-ink group-hover:text-gold-bright">&gt;${parsed[2]}</span>
+                      <span className="text-ink group-hover:text-gold-bright">≥${parsed[2]}</span>
                     </>
                   ) : m.name}
                 </span>
@@ -81,7 +81,7 @@ export function Landing08() {
 }
 
 function BigMover({ market, rank }: { market: MarketDto; rank: number }) {
-  const parsed = (market.name ?? '').match(/^([A-Z]{1,6})\s*>\s*\$([0-9,]+)/);
+  const parsed = (market.name ?? '').match(/^([A-Z]{1,6})\s*[>≥]\s*\$([0-9,]+)/);
   const pct = market.yesPrice * 100;
   const lean = pct >= 50 ? 'yes' : 'no';
   const conviction = Math.abs(50 - pct);
@@ -105,7 +105,7 @@ function BigMover({ market, rank }: { market: MarketDto; rank: number }) {
         <div className="mt-3 font-mono text-[10px] tracking-[0.18em] text-muted">{parsed[1]}</div>
       )}
       <h3 className="mt-1 font-display text-3xl font-semibold leading-none tracking-marquee text-ink group-hover:text-gold-bright">
-        {parsed ? `> $${parsed[2]}` : market.name}
+        {parsed ? `≥ $${parsed[2]}` : market.name}
       </h3>
 
       <div className="mt-6 space-y-2">

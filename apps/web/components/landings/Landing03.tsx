@@ -72,7 +72,7 @@ export function Landing03() {
 }
 
 function MiniMarket({ market }: { market: MarketDto }) {
-  const parsed = (market.name ?? '').match(/^([A-Z]{1,6})\s*>\s*\$([0-9,]+)/);
+  const parsed = (market.name ?? '').match(/^([A-Z]{1,6})\s*[>≥]\s*\$([0-9,]+)/);
   return (
     <Link
       href={`/markets/${market.collectionId}`}
@@ -83,7 +83,7 @@ function MiniMarket({ market }: { market: MarketDto }) {
           <>
             <span className="font-mono text-[10px] tracking-[0.14em] text-muted">{parsed[1]}</span>{' '}
             <span className="font-display text-lg font-semibold tracking-marquee text-ink group-hover:text-gold-bright">
-              &gt; ${parsed[2]}
+              ≥ ${parsed[2]}
             </span>
           </>
         ) : (

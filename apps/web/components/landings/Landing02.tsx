@@ -30,7 +30,7 @@ export function Landing02() {
   }
 
   const m = featured[idx % featured.length];
-  const parsed = (m.name ?? '').match(/^([A-Z]{1,6})\s*>\s*\$([0-9,]+)/);
+  const parsed = (m.name ?? '').match(/^([A-Z]{1,6})\s*[>≥]\s*\$([0-9,]+)/);
   const yesPct = (m.yesPrice * 100).toFixed(0);
   const noPct = (m.noPrice * 100).toFixed(0);
 

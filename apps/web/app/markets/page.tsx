@@ -194,7 +194,7 @@ function parseTicker(name: string | null | undefined): string {
   // Strip a leading [E2E] / [TEST] / etc. label if present (defensive — these
   // should already be filtered out by the aggregator's bootstrap).
   const stripped = name.replace(/^\[[^\]]+]\s*/, '');
-  const m = stripped.match(/^([A-Z]{1,6})\s*>\s*\$/);
+  const m = stripped.match(/^([A-Z]{1,6})\s*[>≥]\s*\$/);
   return m ? m[1] : 'Other';
 }
 

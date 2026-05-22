@@ -97,7 +97,7 @@ export function Landing10() {
 }
 
 function SmallTile({ market }: { market: MarketDto }) {
-  const parsed = (market.name ?? '').match(/^([A-Z]{1,6})\s*>\s*\$([0-9,]+)/);
+  const parsed = (market.name ?? '').match(/^([A-Z]{1,6})\s*[>≥]\s*\$([0-9,]+)/);
   return (
     <Link
       href={`/markets/${market.collectionId}`}
@@ -108,7 +108,7 @@ function SmallTile({ market }: { market: MarketDto }) {
           <div className="font-mono text-[9px] tracking-[0.16em] text-muted">{parsed[1]}</div>
         )}
         <div className="font-display text-lg text-ink group-hover:text-gold-bright">
-          {parsed ? `>$${parsed[2]}` : market.name}
+          {parsed ? `≥ $${parsed[2]}` : market.name}
         </div>
       </div>
       <div className="font-mono text-sm text-yes">{(market.yesPrice * 100).toFixed(0)}%</div>

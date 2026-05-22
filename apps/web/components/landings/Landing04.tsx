@@ -70,7 +70,7 @@ export function Landing04() {
         <h2 className="eyebrow mb-3 border-b border-border pb-2">All markets · {active.length}</h2>
         <div className="grid grid-cols-2 gap-x-6 gap-y-2 md:grid-cols-3 lg:grid-cols-4">
           {active.map((m) => {
-            const parsed = (m.name ?? '').match(/^([A-Z]{1,6})\s*>\s*\$([0-9,]+)/);
+            const parsed = (m.name ?? '').match(/^([A-Z]{1,6})\s*[>≥]\s*\$([0-9,]+)/);
             return (
               <Link
                 key={m.collectionId}
@@ -81,7 +81,7 @@ export function Landing04() {
                   {parsed ? (
                     <>
                       <span className="font-mono text-[9px] tracking-[0.12em] text-muted">{parsed[1]}</span>{' '}
-                      &gt; ${parsed[2]}
+                      ≥ ${parsed[2]}
                     </>
                   ) : (
                     m.name
@@ -100,7 +100,7 @@ export function Landing04() {
 }
 
 function MoverCard({ market }: { market: MarketDto }) {
-  const parsed = (market.name ?? '').match(/^([A-Z]{1,6})\s*>\s*\$([0-9,]+)/);
+  const parsed = (market.name ?? '').match(/^([A-Z]{1,6})\s*[>≥]\s*\$([0-9,]+)/);
   const pct = market.yesPrice * 100;
   const lean = pct >= 50 ? 'YES' : 'NO';
   const tone = pct >= 50 ? 'text-yes-bright' : 'text-no-bright';
@@ -113,7 +113,7 @@ function MoverCard({ market }: { market: MarketDto }) {
         <span className="font-mono text-[10px] tracking-[0.16em] text-muted">{parsed[1]}</span>
       )}
       <h3 className="mt-2 font-display text-2xl font-semibold leading-tight tracking-marquee text-ink group-hover:text-gold-bright">
-        {parsed ? `> $${parsed[2]}` : market.name}
+        {parsed ? `≥ $${parsed[2]}` : market.name}
       </h3>
       <p className="mt-3 font-display text-base italic leading-relaxed text-ink-dim">
         Market leans <span className={tone}>{lean}</span>: {(pct >= 50 ? pct : 100 - pct).toFixed(0)}% conviction at quote.

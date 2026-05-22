@@ -56,7 +56,7 @@ export function Landing01() {
                   className="group grid grid-cols-[80px_1fr_80px_80px_140px] items-center gap-3 border-b border-border px-4 py-2.5 last:border-b-0 transition-colors hover:bg-panel-2"
                 >
                   <span className="font-display text-base font-semibold text-ink">{g.ticker}</span>
-                  <span className="font-mono text-xs text-muted">&gt; ${g.strike}</span>
+                  <span className="font-mono text-xs text-muted">≥ ${g.strike}</span>
                   <span className={clsx('font-mono text-sm', g.yesPct >= 50 ? 'text-yes' : 'text-no')}>
                     {g.yesPct.toFixed(0)}%
                   </span>
@@ -145,7 +145,7 @@ function groupByTicker(markets: MarketDto[]) {
   // ticker headline.
   const byTicker = new Map<string, { ticker: string; strike: string; yesPct: number; collectionId: string; totalCount: number }>();
   for (const m of markets) {
-    const match = (m.name ?? '').match(/^([A-Z]{1,6})\s*>\s*\$([0-9,]+)/);
+    const match = (m.name ?? '').match(/^([A-Z]{1,6})\s*[>≥]\s*\$([0-9,]+)/);
     if (!match) continue;
     const [, ticker, strike] = match;
     const yesPct = m.yesPrice * 100;

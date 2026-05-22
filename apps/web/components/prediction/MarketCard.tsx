@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/Card';
 import { ProbabilityBar } from './ProbabilityBar';
 import { CoinDisplay } from '@/components/ui/CoinDisplay';
 import { env } from '@/lib/env';
+import { parseMarketName, formatCloseDate } from '@/lib/market-name';
 import { clsx } from 'clsx';
 
 /**
@@ -32,17 +33,10 @@ const statusBadge: Record<MarketDto['status'], { label: string; cls: string }> =
   unknown: { label: '—', cls: 'border-border bg-panel-2 text-muted' },
 };
 
-/** Parse the "TICKER > $STRIKE" pattern. Returns null for non-Meridian markets. */
-function parseMarketName(name: string | null | undefined): { ticker: string; strike: string } | null {
-  if (!name) return null;
-  const stripped = name.replace(/^\[[^\]]+]\s*/, '');
-  const m = stripped.match(/^([A-Z]{1,6})\s*>\s*\$([0-9,]+)/);
-  return m ? { ticker: m[1], strike: m[2] } : null;
-}
-
 export function MarketCard({ market }: Props) {
   const s = statusBadge[market.status];
-  const parsed = parseMarketName(market.name);
+  const parsed = parseMarketName(market.name, market.description);
+  const closeLabel = formatCloseDate(parsed?.closeDate);
   const yesPct = (market.yesPrice * 100).toFixed(0);
 
   return (
@@ -77,7 +71,7 @@ export function MarketCard({ market }: Props) {
               <div className="flex flex-col">
                 <span className="eyebrow">{parsed.ticker}</span>
                 <h2 className="mt-1 font-display text-3xl font-semibold leading-none tracking-marquee text-ink transition-colors group-hover:text-gold-bright">
-                  &gt; ${parsed.strike}
+                  ≥ ${parsed.strike}
                 </h2>
               </div>
             ) : (
@@ -85,8 +79,14 @@ export function MarketCard({ market }: Props) {
                 {market.name ?? `Market #${market.collectionId}`}
               </h2>
             )}
-            <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.16em] text-faint">
-              #{market.collectionId}
+            <p className="mt-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-faint">
+              <span>#{market.collectionId}</span>
+              {closeLabel && (
+                <>
+                  <span className="text-border-bright">·</span>
+                  <span className="text-muted">{closeLabel} close</span>
+                </>
+              )}
             </p>
           </div>
         </div>

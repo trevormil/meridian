@@ -127,7 +127,7 @@ function PositionRow({ position }: { position: Position }) {
           {parsed ? (
             <>
               <span className="font-mono text-[10px] tracking-[0.14em] text-muted">{parsed.ticker}</span>{' '}
-              <span>&gt; ${parsed.strike}</span>
+              <span>≥ ${parsed.strike}</span>
             </>
           ) : (
             m.name ?? `Market #${m.collectionId}`
@@ -178,7 +178,7 @@ function TickerGlyph({
 function parseMarketRow(name: string | null | undefined): { ticker: string; strike: string } | null {
   if (!name) return null;
   const stripped = name.replace(/^\[[^\]]+]\s*/, '');
-  const m = stripped.match(/^([A-Z]{1,6})\s*>\s*\$([0-9,]+)/);
+  const m = stripped.match(/^([A-Z]{1,6})\s*[>≥]\s*\$([0-9,]+)/);
   return m ? { ticker: m[1], strike: m[2] } : null;
 }
 

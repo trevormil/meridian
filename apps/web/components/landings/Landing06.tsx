@@ -19,12 +19,12 @@ export function Landing06() {
       <div className="-mx-6 overflow-hidden border-y border-border bg-gradient-to-r from-bg via-panel-2 to-bg py-3">
         <div className="ticker-track flex gap-12 whitespace-nowrap font-mono text-sm">
           {[...active, ...active].slice(0, 28).map((m, i) => {
-            const parsed = (m.name ?? '').match(/^([A-Z]{1,6})\s*>\s*\$([0-9,]+)/);
+            const parsed = (m.name ?? '').match(/^([A-Z]{1,6})\s*[>≥]\s*\$([0-9,]+)/);
             const pct = (m.yesPrice * 100).toFixed(0);
             return (
               <span key={`${m.collectionId}-${i}`} className="inline-flex items-center gap-2">
                 {parsed && <span className="text-muted">{parsed[1]}</span>}
-                {parsed && <span className="text-ink">&gt;${parsed[2]}</span>}
+                {parsed && <span className="text-ink">≥${parsed[2]}</span>}
                 <span className={Number(pct) >= 50 ? 'text-yes' : 'text-no'}>{pct}%</span>
                 <span className="text-faint">·</span>
               </span>

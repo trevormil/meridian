@@ -65,7 +65,7 @@ export function Landing05() {
           <span className="eyebrow mb-3 block">Top by volume</span>
           <div className="overflow-hidden rounded border border-border bg-panel">
             {top.map((m) => {
-              const parsed = (m.name ?? '').match(/^([A-Z]{1,6})\s*>\s*\$([0-9,]+)/);
+              const parsed = (m.name ?? '').match(/^([A-Z]{1,6})\s*[>≥]\s*\$([0-9,]+)/);
               const vol = (Number(m.totalVolume ?? '0') / 10 ** env.usdcDecimals).toFixed(2);
               return (
                 <a
@@ -76,7 +76,7 @@ export function Landing05() {
                   <span className="truncate font-display text-sm text-ink">
                     {parsed ? <>
                       <span className="font-mono text-[10px] text-muted">{parsed[1]}</span>{' '}
-                      &gt; ${parsed[2]}
+                      ≥ ${parsed[2]}
                     </> : m.name}
                   </span>
                   <span className="font-mono text-xs text-yes">{(m.yesPrice * 100).toFixed(0)}%</span>

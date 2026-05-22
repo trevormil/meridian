@@ -43,7 +43,9 @@ interface MarketSpec {
 const TEST_LABEL = process.env.MERIDIAN_TEST_LABEL;
 
 function marketName(spec: MarketSpec): string {
-  const base = `${spec.ticker} > $${spec.strike}`;
+  // ≥ (not >) — settlement is "close AT OR ABOVE strike → YES". The name must
+  // match the actual rule so traders aren't misled at the boundary.
+  const base = `${spec.ticker} ≥ $${spec.strike}`;
   return TEST_LABEL ? `[${TEST_LABEL}] ${base}` : base;
 }
 
