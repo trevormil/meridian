@@ -41,8 +41,12 @@ import { syncIntentsForOwner } from '../db/intents.js';
 const SEED_MIN_INTENTS = 24;
 
 const QUANTITIES: readonly bigint[] = [1_000_000n, 5_000_000n, 10_000_000n] as const;
-const SELL_PRICES = [0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95] as const;
-const BUY_PRICES = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45] as const;
+// Ladder lives entirely OUTSIDE the 40–60¢ band: asks at 65–95¢, bids at
+// 5–35¢. The band is left open on purpose — the market-maker bot auto-fills
+// any user order in 40–60¢, and seeding it would just have the bot trade with
+// itself. This ladder is visual depth only (it never crosses or fills).
+const SELL_PRICES = [0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95] as const;
+const BUY_PRICES = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35] as const;
 const TOTAL_TOKEN_QTY = QUANTITIES.reduce((a, b) => a + b, 0n); // 16 per sell-price-point
 const FOREVER_END_MS = BigInt('9999999999999');
 

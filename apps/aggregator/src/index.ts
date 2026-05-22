@@ -13,7 +13,7 @@ import { startStatsPoller } from './workers/stats-poller.js';
 import { startTxWatcher } from './workers/tx-watcher.js';
 import { startBlockWatcher } from './workers/block-watcher.js';
 import { startSeeder } from './bot/seeder.js';
-import { startArbitrageBot } from './bot/arbitrage.js';
+import { startMarketMakerBot } from './bot/market-maker.js';
 import { handleOpen, handleClose, handleMessage } from './ws.js';
 
 const app = new Hono();
@@ -72,9 +72,9 @@ startBlockWatcher().catch((e) => {
 
 // SEED_MODE liquidity seeder — opt-in via env. No-op when fixture missing.
 startSeeder();
-// Arbitrage bot — always on (cheap when no opportunities exist). Profitable
-// trades absorb mispriced limit orders and pay the protocol fee back to itself.
-startArbitrageBot();
+// Market-maker bot — always on. Auto-fills any user order in the 40–60¢ band
+// (mints+sells for buys, buys for sells) so trades execute instantly.
+startMarketMakerBot();
 
 // Replaced @hono/node-server with Bun.serve so HTTP + WebSocket share the
 // same port. Hono handles all HTTP routes; `Bun.serve.websocket` handles
