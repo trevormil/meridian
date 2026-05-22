@@ -13,15 +13,34 @@
 }
 
 # FE — Next.js
+# `dynamic a` makes Caddy re-resolve the container IP per request via Docker's
+# embedded DNS (127.0.0.11) instead of caching it once at startup. Without
+# this, a container restart that hands out a new IP leaves Caddy dialing the
+# dead old one → connection refused → 502.
 {$DOMAIN_WEB} {
 	encode zstd gzip
-	reverse_proxy web:3000
+	reverse_proxy {
+		dynamic a {
+			name web
+			port 3000
+			refresh 10s
+			resolvers 127.0.0.11
+		}
+	}
 }
 
-# Aggregator REST + WS
+# Aggregator REST + WS. Same dynamic-resolution treatment — and WebSocket
+# upgrades pass through reverse_proxy automatically over HTTP/1.1.
 {$DOMAIN_API} {
 	encode zstd gzip
-	reverse_proxy aggregator:4001
+	reverse_proxy {
+		dynamic a {
+			name aggregator
+			port 4001
+			refresh 10s
+			resolvers 127.0.0.11
+		}
+	}
 }
 
 # Chain LCD (Cosmos REST)
