@@ -71,7 +71,7 @@ export function ActivityFeed({ market }: Props) {
 
       {filtered.length > 0 && (
         <ul className="divide-y divide-border">
-          <li className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-3 py-2 text-[10px] uppercase tracking-[0.14em] text-muted">
+          <li className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-2 py-2 text-[10px] uppercase tracking-[0.14em] text-muted sm:gap-3">
             <span>Time</span>
             <span>Side</span>
             <span className="text-right">Qty</span>
@@ -126,7 +126,7 @@ function FillRow({ fill, self }: { fill: FillDto; self?: string }) {
   return (
     <li
       className={clsx(
-        'grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-3 py-2.5 transition-colors',
+        'grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-2 py-2.5 transition-colors sm:gap-3',
         isMine && 'bg-gold/[0.03]',
       )}
     >
@@ -141,7 +141,9 @@ function FillRow({ fill, self }: { fill: FillDto; self?: string }) {
         >
           {fill.side.toUpperCase()}
         </span>
-        <span className="inline-flex min-w-0 items-center gap-1.5 text-[11px] text-muted">
+        {/* from→to addresses are detail — hide on mobile to keep the row from
+            overflowing; the numeric columns are what matter on a phone. */}
+        <span className="hidden min-w-0 items-center gap-1.5 text-[11px] text-muted sm:inline-flex">
           <AddressDisplay address={fill.fromAddress} size={11} copyable={false} />
           <span className="text-faint">→</span>
           <AddressDisplay address={fill.toAddress} size={11} copyable={false} />

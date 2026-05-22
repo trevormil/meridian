@@ -89,13 +89,13 @@ function SideCell({
   const labelTone = tone === 'yes' ? 'text-yes' : 'text-no';
   const valueTone = tone === 'yes' ? 'text-yes-bright' : 'text-no-bright';
   return (
-    <div className="flex flex-col gap-1 bg-panel px-4 py-3">
+    <div className="flex flex-col gap-1 bg-panel px-3 py-2.5 sm:px-4 sm:py-3">
       <div className="flex items-center justify-between">
         <span className={clsx('eyebrow', labelTone)}>{tone.toUpperCase()}</span>
         <span className="font-mono text-[9px] tracking-[0.12em] text-faint">@ {priceLabel}</span>
       </div>
       <div className="flex items-baseline gap-1.5">
-        <span className={clsx('font-mono text-xl font-semibold leading-none', valueTone)}>
+        <span className={clsx('font-mono text-base font-semibold leading-none sm:text-xl', valueTone)}>
           {trimNum(tokens)}
         </span>
         <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">tokens</span>
@@ -109,10 +109,10 @@ function SideCell({
 
 function TotalCell({ value }: { value: number }) {
   return (
-    <div className="flex flex-col gap-1 bg-panel px-4 py-3">
+    <div className="flex flex-col gap-1 bg-panel px-3 py-2.5 sm:px-4 sm:py-3">
       <span className="eyebrow text-gold">Expected value</span>
       <div className="flex items-baseline gap-1.5">
-        <span className="font-mono text-xl font-semibold leading-none text-gold-bright">
+        <span className="font-mono text-base font-semibold leading-none sm:text-xl text-gold-bright">
           {value.toFixed(2)}
         </span>
         <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">

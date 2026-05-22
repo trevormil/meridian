@@ -10,6 +10,7 @@ import { TradingDayBar } from '@/components/TradingDayBar';
 import { NavLink } from '@/components/NavLink';
 import { MarketStatusPill } from '@/components/MarketStatusPill';
 import { HeroAtmosphere } from '@/components/HeroAtmosphere';
+import { MobileNav } from '@/components/MobileNav';
 
 /**
  * Fraunces — Google's contemporary serif. Used sparingly for marquee
@@ -35,7 +36,18 @@ export const metadata = {
   title: 'Meridian · binary stock outcome markets',
   description:
     'Daily YES/NO markets on MAG7 stock closing prices. $1 USDC binary payout, oracle-settled at 4:05 PM ET. Powered by BitBadges.',
-  icons: { icon: '/meridian-logo.png' },
+  icons: { icon: '/meridian-logo.png', apple: '/meridian-logo.png' },
+  manifest: '/manifest.webmanifest',
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent' as const, title: 'Meridian' },
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  // viewport-fit=cover lets us paint into the iOS notch/home-indicator area;
+  // the bottom tab bar pads itself with env(safe-area-inset-bottom).
+  viewportFit: 'cover' as const,
+  themeColor: '#0B0908',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -53,7 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <TradingDayBar />
 
             <header className="sticky top-0 z-40 border-b border-border bg-bg/90 backdrop-blur-xl">
-              <div className="mx-auto flex h-14 max-w-7xl items-center gap-6 px-6">
+              <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:gap-6 sm:px-6">
                 {/* Left cluster — brand + ambient status */}
                 <div className="flex items-center gap-4">
                   <BrandLogo />
@@ -84,9 +96,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             </header>
 
-            <main className="mx-auto max-w-7xl px-6 pb-24 pt-10">{children}</main>
+            {/* pb leaves room for the fixed mobile tab bar (≈64px + safe area);
+                reverts to normal bottom padding ≥ sm where the bar is hidden. */}
+            <main className="mx-auto max-w-7xl px-4 pb-28 pt-6 sm:px-6 sm:pb-24 sm:pt-10">
+              {children}
+            </main>
 
             <Footer />
+            <MobileNav />
           </ToastProvider>
         </WalletProvider>
       </body>
@@ -95,10 +112,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }
 
 function Footer() {
+  // extra bottom padding on mobile so the fixed tab bar doesn't cover the
+  // meta row; normal spacing ≥ sm.
   return (
-    <footer className="mt-32 border-t border-border bg-gradient-to-b from-bg to-panel">
-      <div className="mx-auto max-w-7xl px-6 py-14">
-        <div className="grid gap-12 md:grid-cols-12">
+    <footer className="mt-20 border-t border-border bg-gradient-to-b from-bg to-panel pb-20 sm:mt-32 sm:pb-0">
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
+        <div className="grid gap-10 md:grid-cols-12 sm:gap-12">
           <div className="md:col-span-5">
             <div className="flex items-center gap-3">
               <div className="relative inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border border-border-hi bg-bg shadow-[0_0_24px_-8px_rgba(232,177,74,0.4)]">

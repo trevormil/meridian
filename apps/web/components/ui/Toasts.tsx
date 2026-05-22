@@ -58,7 +58,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <Ctx.Provider value={api}>
       {children}
-      <div className="pointer-events-none fixed right-4 top-20 z-[60] flex w-full max-w-sm flex-col gap-2">
+      {/* Mobile: span both gutters (left-4 right-4) so a max-w-sm card can't
+          overflow a 375px screen. Desktop: pin to the right at max-w-sm. */}
+      <div className="pointer-events-none fixed inset-x-4 top-16 z-[60] flex flex-col gap-2 sm:inset-x-auto sm:right-4 sm:top-20 sm:w-full sm:max-w-sm">
         {toasts.map((t) => (
           <ToastItem key={t.id} toast={t} onClose={() => dismiss(t.id)} />
         ))}

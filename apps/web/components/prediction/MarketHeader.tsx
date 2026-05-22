@@ -26,16 +26,16 @@ export function MarketHeader({ market }: Props) {
   const closeLabel = formatCloseDate(parsed?.closeDate);
   return (
     <Card variant="hero" className="overflow-hidden bg-hero-radial">
-      <div className="flex items-start gap-5">
+      <div className="flex items-start gap-3 sm:gap-5">
         {market.image ? (
           <img
             src={market.image}
             alt=""
-            className="h-20 w-20 flex-shrink-0 rounded-xl border border-border object-cover"
+            className="h-14 w-14 flex-shrink-0 rounded-xl border border-border object-cover sm:h-20 sm:w-20"
             onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')}
           />
         ) : (
-          <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-xl border border-border bg-panel-2 text-3xl font-bold text-muted">
+          <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl border border-border bg-panel-2 text-2xl font-bold text-muted sm:h-20 sm:w-20 sm:text-3xl">
             {(market.name ?? '?').slice(0, 1).toUpperCase()}
           </div>
         )}

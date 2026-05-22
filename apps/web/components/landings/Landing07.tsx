@@ -37,24 +37,24 @@ export function Landing07() {
   const currentStep = STEPS.reduce((acc, s, i) => (min >= s.minute ? i : acc), -1);
 
   return (
-    <div className="space-y-20">
-      <section className="flex flex-col items-center pt-8 text-center">
-        <div className="relative inline-flex h-24 w-24 items-center justify-center overflow-hidden rounded-md border border-gold/30 bg-bg shadow-[0_0_56px_-8px_rgba(232,177,74,0.5)]">
+    <div className="space-y-14 sm:space-y-20">
+      <section className="flex flex-col items-center pt-4 text-center sm:pt-8">
+        <div className="relative inline-flex h-16 w-16 items-center justify-center overflow-hidden rounded-md border border-gold/30 bg-bg shadow-[0_0_56px_-8px_rgba(232,177,74,0.5)] sm:h-24 sm:w-24">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/meridian-logo.png" alt="" width={96} height={96} className="h-full w-full object-cover" />
         </div>
-        <h1 className="mt-8 font-display text-7xl font-semibold leading-none tracking-marquee text-ink md:text-8xl">
+        <h1 className="mt-5 font-display text-5xl font-semibold leading-none tracking-marquee text-ink sm:mt-8 sm:text-7xl md:text-8xl">
           Meridian
         </h1>
-        <p className="mt-4 max-w-md text-sm text-ink-dim">
+        <p className="mt-4 max-w-md px-2 text-sm text-ink-dim">
           Daily MAG7 binary outcome markets. One trading day, one settle, one $1 USDC payout per winning token.
         </p>
 
         {/* Lifecycle timeline */}
-        <div className="mt-16 w-full max-w-3xl">
+        <div className="mt-12 w-full max-w-3xl sm:mt-16">
           <div className="relative">
-            <div className="absolute left-0 right-0 top-3.5 h-px bg-border" />
-            <div className="relative grid grid-cols-4 gap-4">
+            <div className="absolute left-0 right-0 top-3 h-px bg-border sm:top-3.5" />
+            <div className="relative grid grid-cols-4 gap-2 sm:gap-4">
               {STEPS.map((s, i) => {
                 const isPast = currentStep > i;
                 const isCurrent = currentStep === i;
@@ -62,25 +62,25 @@ export function Landing07() {
                   <div key={s.label} className="flex flex-col items-center">
                     <div
                       className={clsx(
-                        'h-7 w-7 rounded-full border-2 transition-all',
+                        'h-6 w-6 rounded-full border-2 transition-all sm:h-7 sm:w-7',
                         isCurrent ? 'border-gold bg-gold shadow-[0_0_24px_4px_rgba(232,177,74,0.5)] animate-pulse-soft'
                           : isPast ? 'border-gold/60 bg-gold/40'
                           : 'border-border-bright bg-bg',
                       )}
                     />
                     <span className={clsx(
-                      'mt-3 font-mono text-[10px] tracking-[0.14em] uppercase',
+                      'mt-2 font-mono text-[9px] tracking-[0.1em] uppercase sm:mt-3 sm:text-[10px] sm:tracking-[0.14em]',
                       isCurrent ? 'text-gold' : isPast ? 'text-ink' : 'text-muted',
                     )}>
                       {s.time}
                     </span>
                     <span className={clsx(
-                      'mt-1 font-display text-base font-semibold tracking-marquee',
+                      'mt-1 font-display text-sm font-semibold tracking-marquee sm:text-base',
                       isCurrent ? 'text-gold-bright' : 'text-ink-dim',
                     )}>
                       {s.label}
                     </span>
-                    <span className="mt-0.5 text-[10px] text-faint">{s.desc}</span>
+                    <span className="mt-0.5 hidden text-[10px] text-faint sm:block">{s.desc}</span>
                   </div>
                 );
               })}

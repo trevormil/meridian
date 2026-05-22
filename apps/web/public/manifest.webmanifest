@@ -1,0 +1,14 @@
+{
+  "name": "Meridian — Binary Stock Outcome Markets",
+  "short_name": "Meridian",
+  "description": "Daily YES/NO markets on MAG7 stock closing prices. $1 USDC binary payout, oracle-settled.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B0908",
+  "theme_color": "#0B0908",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/meridian-logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/meridian-logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

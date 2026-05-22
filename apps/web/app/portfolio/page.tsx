@@ -120,7 +120,7 @@ function PositionRow({ position }: { position: Position }) {
     <li>
       <Link
         href={`/markets/${m.collectionId}`}
-        className="group grid h-14 grid-cols-[auto_1fr_auto_auto] items-center gap-6 px-1 transition-colors hover:bg-panel-2/60"
+        className="group grid h-14 grid-cols-[auto_1fr_auto_auto] items-center gap-3 px-1 transition-colors hover:bg-panel-2/60 sm:gap-6"
       >
         <TickerGlyph ticker={parsed?.ticker} image={m.image} fallback={m.name} />
         <span className="truncate font-display text-base font-semibold leading-none tracking-marquee text-ink transition-colors group-hover:text-gold-bright">
@@ -253,7 +253,7 @@ export default function PortfolioPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <span className="eyebrow">Account</span>
-          <h1 className="mt-2 font-display text-5xl font-semibold leading-none tracking-marquee text-ink">
+          <h1 className="mt-2 font-display text-4xl font-semibold leading-none tracking-marquee text-ink sm:text-5xl">
             Portfolio
           </h1>
           <p className="mt-3 max-w-xl text-sm text-ink-dim">

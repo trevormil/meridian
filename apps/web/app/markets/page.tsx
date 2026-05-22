@@ -70,13 +70,13 @@ export default function HomePage() {
   return (
     <div className="space-y-8">
       <div>
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-6">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4 sm:mb-8 sm:gap-6">
           <div>
             <span className="eyebrow">Today · MAG7 closing prices</span>
-            <h1 className="mt-3 font-display text-6xl font-semibold leading-none tracking-marquee text-ink">
+            <h1 className="mt-2 font-display text-4xl font-semibold leading-none tracking-marquee text-ink sm:mt-3 sm:text-6xl">
               Markets
             </h1>
-            <p className="mt-4 max-w-xl text-sm leading-relaxed text-ink-dim">
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink-dim sm:mt-4">
               Daily binary outcome contracts on the seven largest US tech equities. Each pays{' '}
               <span className="font-mono text-gold">$1 USDC</span> for the winning side,{' '}
               <span className="font-mono text-faint">$0</span> for the losing side. Auto-settled
@@ -93,14 +93,15 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        {/* tab pills scroll horizontally on mobile rather than wrapping */}
+        <div className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
           {(['active', 'yes', 'no', 'push', 'other'] as const).map((t) => (
             <button
               key={t}
               type="button"
               onClick={() => setTab(t)}
               className={clsx(
-                'rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider transition-colors',
+                'shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors sm:py-1',
                 tab === t
                   ? TAB_COLORS[t]
                   : 'border-border bg-bg/40 text-muted hover:border-border-hi hover:text-ink',

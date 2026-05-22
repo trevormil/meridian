@@ -16,6 +16,20 @@ body {
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Don't let iOS bump font sizes in landscape; respect tap-to-zoom only. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* iOS Safari zooms the page when focusing an input whose font-size < 16px.
+   Pin form controls to 16px so the in-Keplr-browser keyboard doesn't yank
+   the viewport around. Visual sizing is handled by the component classes. */
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
 }
 
 body {
@@ -132,3 +146,12 @@ input:focus-visible,
 
 /* Stacking: HeroAtmosphere at z:0, grain overlay at z:1, content at z:2 */
 main, header, footer { position: relative; z-index: 2; }
+
+/* Hide scrollbars on horizontally-scrollable strips (mobile tab rows, etc)
+   while keeping them swipeable. */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* iOS safe-area helpers for the fixed bottom nav. */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.h-safe-bottom { height: env(safe-area-inset-bottom, 0px); }
