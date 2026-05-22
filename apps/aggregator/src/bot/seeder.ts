@@ -124,10 +124,16 @@ async function runOnce(): Promise<void> {
   // No LIMIT — process every unseeded active market in a single sweep so
   // morning script bursts don't get capped at 10 markets. Each seed is a
   // sequential 2-tx flow with commit waits, so this paces itself naturally.
+  // Retry anything not yet fully 'seeded' — including 'failed' (transient
+  // errors like the gas revert) and 'in_progress' (a seed interrupted by a
+  // restart). Without this a single hiccup stranded a market forever. The
+  // reentrance lock prevents the same market being double-processed across
+  // overlapping sweeps; a market that genuinely seeds flips to 'seeded' and
+  // drops out of this set.
   const candidates = getDb()
     .prepare(
       `SELECT collection_id, raw_collection_json FROM markets
-       WHERE (seed_status IS NULL OR seed_status = 'pending')
+       WHERE (seed_status IS NULL OR seed_status <> 'seeded')
          AND status = 'active'
        ORDER BY CAST(collection_id AS INTEGER) ASC`,
     )
@@ -189,8 +195,11 @@ async function seedOne(
       all.push(makeBuyIntent(signer.address, collectionId, 'no', q, p));
     }
   }
-  // Chunk into ~50-msg batches to stay under the chain's per-tx gas ceiling.
-  const CHUNK = 50;
+  // Chunk to stay under the SDK's fixed 400k per-tx gas budget. A 50-order
+  // batch measured ~414k gasUsed → out-of-gas revert (every seed failed at
+  // the first slice). ~8.3k gas/order, so 35 ≈ 290k leaves comfortable
+  // headroom for estimation variance. 108 orders → 4 batches.
+  const CHUNK = 35;
   for (let i = 0; i < all.length; i += CHUNK) {
     const slice = all.slice(i, i + CHUNK);
     const ord = await botBroadcast(
