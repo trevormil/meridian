@@ -13,12 +13,11 @@ import { MarketHeader } from '@/components/prediction/MarketHeader';
 import { DepositPanel } from '@/components/prediction/DepositPanel';
 import { RedeemPanel } from '@/components/prediction/RedeemPanel';
 import { SettlePanel } from '@/components/prediction/SettlePanel';
-import { IntentsPanel } from '@/components/prediction/IntentsPanel';
 import { ActivityFeed } from '@/components/prediction/ActivityFeed';
 import { YourPositionBar } from '@/components/prediction/YourPositionBar';
 import { Skeleton } from '@/components/ui/Empty';
 
-type TabKey = 'market' | 'intents' | 'activity' | 'deposit' | 'redeem' | 'settle';
+type TabKey = 'market' | 'activity' | 'deposit' | 'redeem' | 'settle';
 
 export default function MarketPage() {
   const params = useParams<{ collectionId: string }>();
@@ -49,8 +48,9 @@ export default function MarketPage() {
 
   const tabs = useMemo(
     () => [
-      { key: 'market', label: 'Market' },
-      { key: 'intents', label: 'Order Book' },
+      // "Market" is now the merged trading view: chart + order book + place-order
+      // form (was previously split across Market + Order Book tabs).
+      { key: 'market', label: 'Trade' },
       { key: 'activity', label: 'Activity' },
       { key: 'deposit', label: 'Deposit' },
       { key: 'redeem', label: 'Redeem' },
@@ -79,7 +79,6 @@ export default function MarketPage() {
       <Tabs tabs={tabs} active={tab} onChange={(k) => setTab(k as TabKey)} />
       <div>
         {tab === 'market' && <MarketOverviewTab market={market} />}
-        {tab === 'intents' && <IntentsPanel market={market} />}
         {tab === 'activity' && <ActivityFeed market={market} />}
         {tab === 'deposit' && (
           <div className="mx-auto max-w-lg">

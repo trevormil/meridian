@@ -5,6 +5,7 @@ import { ProbabilityBar } from './ProbabilityBar';
 import { CoinDisplay } from '@/components/ui/CoinDisplay';
 import { env } from '@/lib/env';
 import { parseMarketName, formatCloseDate } from '@/lib/market-name';
+import { Sparkline } from './Sparkline';
 import { clsx } from 'clsx';
 
 /**
@@ -93,9 +94,11 @@ export function MarketCard({ market }: Props) {
 
         {/* Probability bar — the visual anchor */}
         <div className="space-y-2">
-          <div className="flex items-baseline justify-between">
+          <div className="flex items-end justify-between">
             <span className="eyebrow">YES</span>
-            <span className="font-mono text-2xl font-semibold text-yes-bright">
+            {/* 10m-candle trend glance — lazy-loaded, trend-colored */}
+            <Sparkline collectionId={market.collectionId} className="mx-3 flex-1" height={28} />
+            <span className="shrink-0 font-mono text-2xl font-semibold leading-none text-yes-bright">
               {yesPct}<span className="text-base text-yes/60">%</span>
             </span>
           </div>

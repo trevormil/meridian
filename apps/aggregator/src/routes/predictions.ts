@@ -93,6 +93,52 @@ predictions.post('/predictions/:collectionId/refresh-fills', async (c) => {
   return c.json({ ok: true, fills, votes });
 });
 
+/**
+ * Batch sparkline endpoint — one request returns compact YES-price series for
+ * many markets. Backs the trend glance on browse market cards: a 45-card page
+ * fetches ALL sparklines in a single round-trip (the FE coalesces per-card
+ * asks into one call) instead of 45 separate /prices requests.
+ *
+ *   GET /predictions/sparklines?ids=1,2,3&timeframe=10m&points=24
+ *   → { sparklines: { "1": [0.50, 0.52, …], … } }
+ *
+ * MUST be registered before `/predictions/:collectionId` so the static
+ * "sparklines" segment isn't captured as a collection id. Only the YES close
+ * per bucket is returned (no OHLC, no NO leg), capped to the most-recent
+ * `points` buckets — keeps the payload tiny.
+ */
+predictions.get('/predictions/sparklines', (c) => {
+  const idsParam = c.req.query('ids') ?? '';
+  const tf = (c.req.query('timeframe') ?? '10m') as '10m' | '1h' | '1d';
+  const points = Math.min(60, Math.max(2, Number(c.req.query('points') ?? '24')));
+  const ids = idsParam
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => /^\d+$/.test(s))
+    .slice(0, 100); // cap fan-out
+  if (ids.length === 0) return c.json({ sparklines: {} });
+
+  const db = getDb();
+  // Most-recent `points` buckets per id, returned oldest→newest. One prepared
+  // statement reused across ids (cheap; each is an indexed range scan).
+  const stmt = db.prepare(
+    `SELECT yes_price FROM (
+       SELECT ts, yes_price FROM price_history
+       WHERE collection_id = ? AND timeframe = ?
+       ORDER BY ts DESC LIMIT ?
+     ) ORDER BY ts ASC`,
+  );
+  const sparklines: Record<string, number[]> = {};
+  for (const id of ids) {
+    const rows = stmt.all(id, tf, points) as Array<{ yes_price: number }>;
+    sparklines[id] = rows.map((r) => r.yes_price);
+  }
+  // Short cache — sparklines tolerate ~15s staleness; lets the browser dedupe
+  // rapid re-requests during scroll.
+  c.header('cache-control', 'public, max-age=15');
+  return c.json({ sparklines });
+});
+
 predictions.get('/predictions/:collectionId', (c) => {
   const id = c.req.param('collectionId');
   const row = getDb().prepare('SELECT * FROM markets WHERE collection_id = ?').get(id) as MarketRow | undefined;

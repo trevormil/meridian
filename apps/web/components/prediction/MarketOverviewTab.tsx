@@ -3,6 +3,7 @@
 import type { MarketDto } from '@/lib/aggregator';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { PriceChart } from './PriceChart';
+import { PlaceOrderCard, OrderBookCard } from './IntentsPanel';
 import { CoinDisplay } from '@/components/ui/CoinDisplay';
 import { CoinIcon } from '@/components/ui/CoinIcon';
 import { AddressDisplay } from '@/components/ui/AddressDisplay';
@@ -12,17 +13,36 @@ interface Props {
   market: MarketDto;
 }
 
+/**
+ * Merged trading view (was two tabs: Market + Order Book).
+ *
+ * Layout via a 3-col grid with DOM order [chart, place-order, book, info]
+ * and col-spans 2/1/2/1. Grid auto-placement lands them as:
+ *   ┌─────────────── chart ──────────────┐ ┌─ place order ─┐
+ *   └──────────────── book ──────────────┘ └──── info ─────┘
+ * The same DOM order collapses to a sensible single-column mobile stack:
+ *   chart → place order → order book → info (trade action stays near the top).
+ */
 export function MarketOverviewTab({ market }: Props) {
-  // The MarketHeader already shows the YES/NO probability + the probability
-  // bar above this tab, so we skip the redundant "Current odds" card and
-  // make the price chart the primary focus here.
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-      <div className="space-y-6 lg:col-span-2">
+      {/* row 1, left (span 2) */}
+      <div className="lg:col-span-2">
         <PriceChart collectionId={market.collectionId} />
       </div>
 
-      <div className="space-y-4">
+      {/* row 1, right — place order sits at the top of the right column */}
+      <div className="lg:col-span-1">
+        <PlaceOrderCard market={market} />
+      </div>
+
+      {/* row 2, left (span 2) — order book beneath the chart */}
+      <div className="lg:col-span-2">
+        <OrderBookCard market={market} />
+      </div>
+
+      {/* row 2, right — market info beneath the order form */}
+      <div className="lg:col-span-1">
         <Card>
           <CardHeader>
             <CardTitle>Market info</CardTitle>
@@ -31,19 +51,14 @@ export function MarketOverviewTab({ market }: Props) {
             <Row
               label="Total volume"
               value={
-                <CoinDisplay
-                  denom={market.depositDenom ?? env.usdcDenom}
-                  amount={market.totalVolume}
-                  size="sm"
-                />
+                <CoinDisplay denom={market.depositDenom ?? env.usdcDenom} amount={market.totalVolume} size="sm" />
               }
             />
             <Row
               label="Backing coin"
               value={
                 <span className="flex items-center gap-1.5">
-                  <CoinIcon denom={market.depositDenom ?? env.usdcDenom} size="xs" />{' '}
-                  {env.usdcSymbol}
+                  <CoinIcon denom={market.depositDenom ?? env.usdcDenom} size="xs" /> {env.usdcSymbol}
                 </span>
               }
             />

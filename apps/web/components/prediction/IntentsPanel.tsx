@@ -25,47 +25,55 @@ interface Props {
 
 type SubTab = 'depth' | 'all' | 'my';
 
-export function IntentsPanel({ market }: Props) {
-  const { address } = useWallet();
-  // Depth view is the default landing — the exchange-style ladders give the
-  // best read on liquidity at a glance. Power users can flip to All / Mine
-  // for the row-by-row table view + cancel buttons.
-  const [subTab, setSubTab] = useState<SubTab>('depth');
+/**
+ * Place-order form, standalone export. Composed into the merged Market view
+ * (chart + book + form) — see MarketOverviewTab.
+ */
+export function PlaceOrderCard({ market }: Props) {
+  return <NewIntentForm market={market} onSuccess={() => {}} />;
+}
 
-  // Realtime — server pushes the full intent set for the market whenever
-  // any intent is added, cancelled, filled, or expires. Per-owner channel
-  // streams the connected user's orders across all markets; we filter to
-  // this collection client-side.
+/**
+ * Order book card (Depth / All / Mine sub-tabs), standalone export. Realtime
+ * intent set streamed per-collection; per-owner channel filtered to this market.
+ */
+export function OrderBookCard({ market }: Props) {
+  const { address } = useWallet();
+  const [subTab, setSubTab] = useState<SubTab>('depth');
   const book = useRealtime<IntentDto[]>(ch.intents(market.collectionId)) ?? [];
   const ownerIntents = useRealtime<IntentDto[]>(address ? ch.intentsOwner(address) : null) ?? [];
   const mine = ownerIntents.filter((i) => i.collectionId === market.collectionId);
-  // No-op kept for child components that pass an after-tx callback. Real-time
-  // pushes from the aggregator make the manual tick unnecessary.
   const onTx = () => {};
 
   return (
+    <Card>
+      <CardHeader>
+        <div className="no-scrollbar -mx-1 flex items-center gap-1 overflow-x-auto px-1">
+          <TabBtn label="Depth" active={subTab === 'depth'} onClick={() => setSubTab('depth')} />
+          <TabBtn label={`All (${book.length})`} active={subTab === 'all'} onClick={() => setSubTab('all')} />
+          {address && <TabBtn label={`Mine (${mine.length})`} active={subTab === 'my'} onClick={() => setSubTab('my')} />}
+        </div>
+        <span className="flex shrink-0 items-center gap-1 text-[10px] uppercase tracking-wider text-yes">
+          <span className="h-1.5 w-1.5 rounded-full bg-yes animate-pulse-soft" /> live
+        </span>
+      </CardHeader>
+      {subTab === 'depth' && <OrderBookDepth book={book} collectionId={market.collectionId} />}
+      {subTab === 'all' && <GroupedIntents rows={book} collectionId={market.collectionId} onTx={onTx} />}
+      {subTab === 'my' && <IntentTable rows={mine} collectionId={market.collectionId} isMy onTx={onTx} />}
+    </Card>
+  );
+}
+
+/** Legacy standalone panel (form + book side by side). Kept for reference;
+ *  the market detail page now uses the merged MarketOverviewTab layout. */
+export function IntentsPanel({ market }: Props) {
+  return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <div className="lg:col-span-1">
-        <NewIntentForm market={market} onSuccess={onTx} />
+        <PlaceOrderCard market={market} />
       </div>
       <div className="space-y-4 lg:col-span-2">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-1">
-              <TabBtn label="Depth" active={subTab === 'depth'} onClick={() => setSubTab('depth')} />
-              <TabBtn label={`All (${book.length})`} active={subTab === 'all'} onClick={() => setSubTab('all')} />
-              {address && <TabBtn label={`Mine (${mine.length})`} active={subTab === 'my'} onClick={() => setSubTab('my')} />}
-            </div>
-            <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-yes">
-              <span className="h-1.5 w-1.5 rounded-full bg-yes animate-pulse-soft" /> live
-            </span>
-          </CardHeader>
-          {subTab === 'depth' && <OrderBookDepth book={book} collectionId={market.collectionId} />}
-          {subTab === 'all' && <GroupedIntents rows={book} collectionId={market.collectionId} onTx={onTx} />}
-          {subTab === 'my' && (
-            <IntentTable rows={mine} collectionId={market.collectionId} isMy onTx={onTx} />
-          )}
-        </Card>
+        <OrderBookCard market={market} />
       </div>
     </div>
   );
