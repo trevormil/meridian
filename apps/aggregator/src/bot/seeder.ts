@@ -233,6 +233,16 @@ async function seedOne(
       slice,
       `seed:orders(#${collectionId} ${i + 1}-${i + slice.length}/${all.length})`,
     );
+    // Out-of-gas (code 11) on a tiny 5-order batch means the collection
+    // already holds so many approvals that the overlap check overflows the
+    // gas budget — i.e. the market is already over-seeded (from interrupted
+    // earlier runs the intents-table guard couldn't see). Treat it as DONE,
+    // not failed: it has ample liquidity and re-trying only loops.
+    if (ord && ord.code === 11) {
+      console.log(`[seeder] #${collectionId} overlap-gas at slice ${i} — already over-seeded, marking seeded`);
+      mark(collectionId, 'seeded');
+      return;
+    }
     if (!ord || ord.code !== 0) throw new Error(`orders step failed at slice ${i}`);
   }
   const totalIntents = all.length;
