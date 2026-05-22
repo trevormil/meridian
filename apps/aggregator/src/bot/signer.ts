@@ -57,11 +57,36 @@ export async function getBotSigner(): Promise<{ client: BitBadgesSigningClient; 
 }
 
 /**
+ * Global serialization lock for ALL bot broadcasts. The seeder and the arb
+ * bot share ONE account (getBotSigner is cached), so concurrent broadcasts
+ * race on the account sequence: both grab sequence N, one commits, the other
+ * is admitted at CheckTx then silently dropped ("never committed"). Chaining
+ * every broadcast through this promise guarantees only one tx from the bot
+ * account is in flight at a time — the sequence advances cleanly between txs.
+ */
+let broadcastLock: Promise<unknown> = Promise.resolve();
+
+/**
  * Sign + broadcast an array of envelope-shaped messages. Polls the LCD for
  * the DeliverTx receipt so callers know whether the tx actually committed
- * (BROADCAST_MODE_SYNC otherwise only reports CheckTx).
+ * (BROADCAST_MODE_SYNC otherwise only reports CheckTx). Serialized across the
+ * whole process so the seeder + arb bot can't collide on the shared sequence.
  */
 export async function botBroadcast(
+  signer: { client: BitBadgesSigningClient; address: string },
+  envelopes: unknown[],
+  label: string,
+): Promise<{ txHash: string; code: number; rawLog: string } | null> {
+  const run = broadcastLock.then(() => doBotBroadcast(signer, envelopes, label));
+  // Keep the chain alive even if this broadcast throws.
+  broadcastLock = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
+async function doBotBroadcast(
   signer: { client: BitBadgesSigningClient; address: string },
   envelopes: unknown[],
   label: string,
