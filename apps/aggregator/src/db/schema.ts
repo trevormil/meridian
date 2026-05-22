@@ -101,6 +101,20 @@ CREATE INDEX IF NOT EXISTS idx_fills_collection_ts ON fills(collection_id, ts DE
 CREATE INDEX IF NOT EXISTS idx_fills_from ON fills(from_address, ts DESC);
 CREATE INDEX IF NOT EXISTS idx_fills_to ON fills(to_address, ts DESC);
 
+CREATE TABLE IF NOT EXISTS address_collections (
+  -- Which markets an address has had ANY token transfer in (mint, fill,
+  -- redeem). Used to NARROW the portfolio positions scan: instead of querying
+  -- every market's balance store (~0.9s each on this node), we live-query only
+  -- the few markets an address has touched. Balances themselves are NOT stored
+  -- here — they're always read live from chain, so positions are never stale.
+  -- Populated from tokenization MsgTransferTokens events (live + the 30s
+  -- backfill re-scan, which makes this self-healing/complete).
+  address       TEXT NOT NULL,
+  collection_id TEXT NOT NULL,
+  PRIMARY KEY (address, collection_id)
+);
+CREATE INDEX IF NOT EXISTS idx_addrcol_address ON address_collections(address);
+
 CREATE TABLE IF NOT EXISTS uploads (
   -- User-uploaded images for market creation. FE POSTs base64, we materialize,
   -- return a URL the FE writes into the markets on-chain image field.

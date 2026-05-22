@@ -85,6 +85,10 @@ async function ingestEvents(events: any[]): Promise<void> {
   const fills = parseUsedApprovalDetails(events);
   for (const f of fills) {
     if (!isKnownMarket(f.collectionId)) continue;
+    // Record which markets each party touched (covers mints, fills, redeems)
+    // BEFORE recordFill's trade-only skip — this narrows the portfolio scan.
+    recordHolding(f.from, f.collectionId);
+    recordHolding(f.to, f.collectionId);
     recordFill(f);
   }
 
@@ -165,6 +169,16 @@ function isRedemptionApproval(approvalId: string): boolean {
     approvalId.startsWith('pm-redeem-') ||
     approvalId.startsWith('pm-settle-')
   );
+}
+
+const recordHoldingStmt = () =>
+  getDb().prepare('INSERT OR IGNORE INTO address_collections (address, collection_id) VALUES (?, ?)');
+
+/** Note that `address` has touched `collectionId` (so the portfolio scan can
+ *  narrow to it). Skips non-user sentinels (the Mint source + burn sink). */
+function recordHolding(address: string, collectionId: string): void {
+  if (!address || !address.startsWith('bb1') || address === BURN_ADDRESS) return;
+  recordHoldingStmt().run(address, collectionId);
 }
 
 function recordFill(f: UsedApprovalDetails): void {

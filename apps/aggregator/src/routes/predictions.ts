@@ -165,15 +165,23 @@ predictions.get('/predictions/positions/:address', async (c) => {
   const address = c.req.param('address');
   if (!/^bb1[0-9a-z]{38,}$/.test(address)) return c.json({ error: 'bad_address' }, 400);
 
-  const markets = getDb()
-    .prepare('SELECT collection_id, deposit_denom FROM markets ORDER BY created_at DESC LIMIT 200')
-    .all() as Array<{ collection_id: string; deposit_denom: string | null }>;
+  // Narrow to ONLY the markets this address has touched (from the
+  // address_collections index) — a single balance query is ~0.9s on this
+  // node, so scanning all ~90 markets would take ~7s even for an empty
+  // portfolio. A normal holder has touched a handful → sub-second. The
+  // balances are still read LIVE per market, so they're never stale.
+  const touched = getDb()
+    .prepare('SELECT collection_id FROM address_collections WHERE address = ?')
+    .all(address) as Array<{ collection_id: string }>;
+  const denomRow = getDb()
+    .prepare('SELECT deposit_denom FROM markets ORDER BY created_at DESC LIMIT 1')
+    .get() as { deposit_denom: string | null } | undefined;
 
-  // Fire all balance reads in parallel against the local chain LCD.
+  // Fire the (narrow) balance reads + the bank query in parallel, live.
   const [bank, stores] = await Promise.all([
     getBankBalances(address),
     Promise.all(
-      markets.map(async (m) => ({ id: m.collection_id, store: await getBalance(m.collection_id, address) })),
+      touched.map(async (m) => ({ id: m.collection_id, store: await getBalance(m.collection_id, address) })),
     ),
   ]);
 
@@ -184,7 +192,7 @@ predictions.get('/predictions/positions/:address', async (c) => {
     })
     .filter((p) => p.yes !== '0' || p.no !== '0');
 
-  const usdcDenom = markets[0]?.deposit_denom ?? 'ustake';
+  const usdcDenom = denomRow?.deposit_denom ?? 'ustake';
   const usdc = bank.find((b) => b.denom === usdcDenom)?.amount ?? '0';
 
   c.header('cache-control', 'no-store');
