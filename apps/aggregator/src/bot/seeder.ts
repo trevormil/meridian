@@ -195,11 +195,9 @@ async function seedOne(
       all.push(makeBuyIntent(signer.address, collectionId, 'no', q, p));
     }
   }
-  // Chunk to stay under the SDK's fixed 400k per-tx gas budget. A 50-order
-  // batch measured ~414k gasUsed → out-of-gas revert (every seed failed at
-  // the first slice). ~8.3k gas/order, so 35 ≈ 290k leaves comfortable
-  // headroom for estimation variance. 108 orders → 4 batches.
-  const CHUNK = 35;
+  // 50-msg batches (~500k gas) now fit comfortably under the bot client's
+  // 2M gas limit (set in getBotSigner). 108 orders → 3 batches.
+  const CHUNK = 50;
   for (let i = 0; i < all.length; i += CHUNK) {
     const slice = all.slice(i, i + CHUNK);
     const ord = await botBroadcast(
