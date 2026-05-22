@@ -47,13 +47,13 @@ export function MarketCard({ market }: Props) {
     >
       <Card
         variant="raised"
-        className="relative h-full cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:border-gold/40 hover:shadow-lift"
+        className="relative h-full cursor-pointer transition-transform duration-200 ease-out hover:-translate-y-1 active:translate-y-0"
       >
         {/* Status chip — top-right corner, absolute so it doesn't compete with the strike */}
         <div className="absolute right-5 top-5 z-10">
           <span
             className={clsx(
-              'inline-flex items-center gap-1 whitespace-nowrap rounded-sm border px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.14em]',
+              'inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.14em]',
               s.cls,
             )}
           >
@@ -144,13 +144,13 @@ function TickerGlyph({
       <img
         src={src}
         alt={ticker ?? ''}
-        className="h-12 w-12 flex-shrink-0 rounded-md border border-border bg-bg-deep object-contain p-1.5"
+        className="h-12 w-12 flex-shrink-0 rounded-clay-sm border border-border bg-bg-deep object-contain p-1.5"
         onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')}
       />
     );
   }
   return (
-    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-md border border-border bg-bg-deep font-display text-xl font-semibold text-muted">
+    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-clay-sm border border-border bg-bg-deep font-display text-xl font-semibold text-muted">
       {(fallback ?? '?').slice(0, 1).toUpperCase()}
     </div>
   );

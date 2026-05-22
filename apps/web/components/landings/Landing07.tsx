@@ -3,7 +3,7 @@
 import { useRealtime } from '@/lib/useRealtime';
 import { ch } from '@/lib/realtime';
 import type { MarketDto } from '@/lib/aggregator';
-import { useCloseCountdown, BrowseCta, PoweredBy } from './Shared';
+import { useCloseCountdown, BrowseCta } from './Shared';
 import { clsx } from 'clsx';
 import Link from 'next/link';
 
@@ -38,15 +38,39 @@ export function Landing07() {
 
   return (
     <div className="space-y-14 sm:space-y-20">
-      <section className="flex flex-col items-center pt-4 text-center sm:pt-8">
-        <div className="relative inline-flex h-16 w-16 items-center justify-center overflow-hidden rounded-md border border-gold/30 bg-bg shadow-[0_0_56px_-8px_rgba(232,177,74,0.5)] sm:h-24 sm:w-24">
+      <section className="flex flex-col items-center pt-6 text-center sm:pt-12">
+        {/* small logo glyph as a "dot of the i"-style accent above the wordmark */}
+        <div className="relative mb-4 inline-flex h-12 w-12 items-center justify-center overflow-hidden rounded-clay-sm bg-bg shadow-clay-sm sm:h-14 sm:w-14">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/meridian-logo.png" alt="" width={96} height={96} className="h-full w-full object-cover" />
+          <img src="/meridian-logo.png" alt="" width={56} height={56} className="h-full w-full object-cover" />
         </div>
-        <h1 className="mt-5 font-display text-5xl font-semibold leading-none tracking-marquee text-ink sm:mt-8 sm:text-7xl md:text-8xl">
-          Meridian
+        {/* Wordmark = typographic abstraction of the logo: Unbounded heavy with
+            the mark's gold→amber→crimson gradient clipped into the letters. */}
+        <h1 className="font-hero text-[clamp(2.75rem,13vw,7.5rem)] font-extrabold leading-[0.9] tracking-[-0.02em]">
+          <span className="wordmark-gradient">MERIDIAN</span>
         </h1>
-        <p className="mt-4 max-w-md px-2 text-sm text-ink-dim">
+
+        {/* Prominent chain attribution — clay badge with the BitBadges mark */}
+        <a
+          href="https://bitbadges.io"
+          target="_blank"
+          rel="noreferrer"
+          className="group mt-6 inline-flex items-center gap-2.5 rounded-full bg-panel-2 py-2 pl-2.5 pr-4 shadow-clay-sm transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-0"
+        >
+          <span className="inline-flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-bg">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/chains/bitbadges.png" alt="BitBadges" width={28} height={28} className="h-full w-full object-cover" />
+          </span>
+          <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-dim">
+            Powered by{' '}
+            <span className="font-semibold text-gold-bright transition-colors group-hover:text-gold">
+              BitBadges
+            </span>
+          </span>
+          <span className="font-mono text-[11px] text-faint transition-transform group-hover:translate-x-0.5">↗</span>
+        </a>
+
+        <p className="mt-6 max-w-md px-2 text-sm text-ink-dim sm:text-base">
           Daily MAG7 binary outcome markets. One trading day, one settle, one $1 USDC payout per winning token.
         </p>
 
@@ -88,10 +112,8 @@ export function Landing07() {
           </div>
         </div>
 
-        <div className="mt-14 flex items-center gap-4">
+        <div className="mt-14 flex items-center justify-center">
           <BrowseCta />
-          <span className="text-faint">·</span>
-          <PoweredBy />
         </div>
       </section>
 

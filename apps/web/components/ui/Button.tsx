@@ -26,24 +26,26 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   fullWidth?: boolean;
 }
 
+// Clay buttons: puffy pill-ish blocks that physically press down on click
+// (base shadow shrinks + button translates toward the surface).
 const variantStyles: Record<Variant, string> = {
   primary:
-    'bg-gold-gradient text-bg shadow-[0_4px_20px_-6px_rgba(232,177,74,0.45)] hover:shadow-[0_6px_28px_-6px_rgba(232,177,74,0.65)] hover:brightness-110',
+    'bg-gold-gradient text-bg shadow-clay-gold hover:brightness-105 active:shadow-clay-gold-pressed',
   secondary:
-    'bg-panel-2 border border-border text-ink hover:border-gold/40 hover:bg-panel-3 hover:text-gold-bright',
-  ghost: 'text-muted hover:text-gold-bright hover:bg-panel-2',
+    'bg-panel-2 text-ink shadow-clay-sm hover:text-gold-bright active:shadow-clay-pressed',
+  ghost: 'text-muted hover:text-gold-bright hover:bg-panel-2 rounded-clay-sm',
   yes:
-    'bg-yes-gradient text-yes-bright border border-yes/40 hover:border-yes/80 hover:bg-yes/20',
+    'bg-yes-gradient text-yes-bright shadow-clay-sm hover:brightness-110 active:shadow-clay-pressed',
   no:
-    'bg-no-gradient text-no-bright border border-no/40 hover:border-no/80 hover:bg-no/20',
+    'bg-no-gradient text-no-bright shadow-clay-sm hover:brightness-110 active:shadow-clay-pressed',
   danger:
-    'bg-no text-ink hover:bg-no-bright shadow-[0_4px_20px_-6px_rgba(217,56,38,0.55)]',
+    'bg-no text-ink shadow-clay-sm hover:bg-no-bright active:shadow-clay-pressed',
 };
 
 const sizeStyles: Record<Size, string> = {
-  sm: 'h-8 px-3 text-[11px] tracking-[0.12em]',
-  md: 'h-10 px-5 text-xs tracking-[0.14em]',
-  lg: 'h-12 px-7 text-sm tracking-[0.14em]',
+  sm: 'h-9 px-4 text-[11px] tracking-[0.1em]',
+  md: 'h-11 px-6 text-xs tracking-[0.12em]',
+  lg: 'h-12 px-8 text-sm tracking-[0.12em]',
 };
 
 export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
@@ -55,11 +57,11 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
       ref={ref}
       disabled={disabled || loading}
       className={clsx(
-        // Sharp corners — no pillow rounding. Uppercase semibold so buttons
-        // read as deliberate actions, not bubbles.
-        'inline-flex items-center justify-center gap-2 rounded font-semibold uppercase transition-all duration-150',
-        'disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:hover:brightness-100',
-        'active:translate-y-px',
+        // Rounded clay pills, semibold (Baloo). Press = translate down +
+        // shrink the base shadow, so the button physically depresses.
+        'inline-flex items-center justify-center gap-2 rounded-full font-semibold uppercase transition-all duration-100',
+        'disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none',
+        'active:translate-y-1',
         variantStyles[variant],
         sizeStyles[size],
         fullWidth && 'w-full',

@@ -6,16 +6,15 @@ interface Props {
 }
 
 const sizes = {
-  sm: 'h-1.5',
-  md: 'h-2',
-  lg: 'h-3',
+  sm: 'h-2',
+  md: 'h-2.5',
+  lg: 'h-3.5',
 };
 
 /**
- * Probability bar — split between YES (champagne) and NO (crimson). Sharp
- * rectangular slabs (NOT pill-rounded) and a single hairline divider between
- * them. The gradient + inner shadow on each side give the bar dimensional
- * weight without resorting to outlines.
+ * Probability bar — split between YES (green) and NO (red). Clay treatment:
+ * a fully-rounded pill recessed into the surface (inset shadow), with each
+ * fill capped soft and a glossy top highlight for dimensional weight.
  */
 export function ProbabilityBar({ yesPrice, noPrice, size = 'md', showLabels = false }: Props) {
   const total = yesPrice + noPrice;
@@ -30,7 +29,7 @@ export function ProbabilityBar({ yesPrice, noPrice, size = 'md', showLabels = fa
         </div>
       )}
       <div
-        className={`relative flex w-full overflow-hidden rounded-sm border border-border bg-bg-deep ${sizes[size]}`}
+        className={`relative flex w-full overflow-hidden rounded-full bg-bg-deep shadow-clay-inset ${sizes[size]}`}
       >
         <div
           className="bg-gradient-to-r from-yes/80 to-yes-bright shadow-[inset_0_1px_0_rgba(245,239,223,0.18)] transition-[width] duration-500 ease-out"

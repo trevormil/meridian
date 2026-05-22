@@ -107,9 +107,11 @@ export function CreateMarketForm({ onSuccess }: { onSuccess?: () => void }) {
           />
         </Field>
         <Field label="Image (optional)">
-          <div className="flex items-center gap-3">
-            {/* Preview thumb if an image is set */}
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-bg-deep">
+          <div className="flex items-stretch gap-3">
+            {/* Bigger square preview, top-aligned + matched to the controls'
+                full height so it reads as a proper image well (not a tiny
+                centered chip). Clay-soft corners + recessed inset. */}
+            <div className="flex aspect-square w-24 shrink-0 items-center justify-center overflow-hidden rounded-clay-sm bg-bg-deep shadow-clay-inset">
               {image ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
@@ -122,13 +124,13 @@ export function CreateMarketForm({ onSuccess }: { onSuccess?: () => void }) {
                 <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-faint">no img</span>
               )}
             </div>
-            <div className="flex flex-1 flex-col gap-2">
+            <div className="flex flex-1 flex-col justify-between gap-2">
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
                   disabled={uploading}
-                  className="rounded border border-border bg-bg-deep px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-gold transition-colors hover:border-gold/50 hover:text-gold-bright disabled:opacity-50"
+                  className="rounded-full bg-panel-2 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-gold shadow-clay-sm transition-all hover:text-gold-bright active:translate-y-0.5 active:shadow-clay-pressed disabled:opacity-50"
                 >
                   {uploading ? 'Uploading…' : image ? 'Replace' : 'Upload image'}
                 </button>
@@ -136,7 +138,7 @@ export function CreateMarketForm({ onSuccess }: { onSuccess?: () => void }) {
                   <button
                     type="button"
                     onClick={() => setImage('')}
-                    className="rounded border border-border bg-bg-deep px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-muted transition-colors hover:border-no/50 hover:text-no-bright"
+                    className="rounded-full bg-panel-2 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-muted shadow-clay-sm transition-all hover:text-no-bright active:translate-y-0.5 active:shadow-clay-pressed"
                   >
                     Clear
                   </button>

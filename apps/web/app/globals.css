@@ -2,18 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/**
- * Switzer (Indian Type Foundry, free at fontshare.com) — geometric sans
- * with character. Used for UI labels, body, and form controls.
- */
-@import url('https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700&display=swap');
-
 html,
 body {
   background: #0B0908;
   color: #F5EFDF;
-  font-family: var(--font-switzer), 'Switzer', ui-sans-serif, system-ui, sans-serif;
-  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
+  /* Clay: Baloo 2 rounded face for everything non-numeric. */
+  font-family: var(--font-baloo), ui-rounded, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   /* Don't let iOS bump font sizes in landscape; respect tap-to-zoom only. */
@@ -156,6 +150,18 @@ input:focus-visible,
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: #7A7060;
+}
+
+/* Brand wordmark — the logo's gold→amber→crimson gradient sweep clipped into
+   the letterforms, so the typeset name carries the same identity as the mark.
+   Pair with `font-hero` (Unbounded). A soft warm glow lifts it off the bg. */
+.wordmark-gradient {
+  background: linear-gradient(102deg, #F4C766 0%, #E8B14A 38%, #D9772E 68%, #D93826 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  filter: drop-shadow(0 6px 24px rgba(232, 177, 74, 0.28));
 }
 
 /* Stacking: HeroAtmosphere at z:0, grain overlay at z:1, content at z:2 */
