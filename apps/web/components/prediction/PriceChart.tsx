@@ -36,6 +36,9 @@ export function PriceChart({ collectionId }: Props) {
   const yesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const noRef = useRef<ISeriesApi<'Line'> | null>(null);
   const refLineRef = useRef<ISeriesApi<'Line'> | null>(null);
+  // Only auto-fit the view on a structural change (market/timeframe), not on
+  // every realtime candle — otherwise a new tick would yank back the user's zoom.
+  const fitKeyRef = useRef<string>('');
   const [timeframe, setTimeframe] = useState<Timeframe>('1h');
   const [empty, setEmpty] = useState(true);
   const [hover, setHover] = useState<{ yes: number; no: number } | null>(null);
@@ -85,8 +88,10 @@ export function PriceChart({ collectionId }: Props) {
           labelBackgroundColor: '#8A6A28',
         },
       },
-      handleScroll: false,
-      handleScale: false,
+      // Zoom + pan, TradingView-style: wheel/pinch zooms, drag pans, drag on
+      // the time axis scales it. (Both were disabled before.)
+      handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
+      handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
     });
 
     const pinRange = () => ({ priceRange: { minValue: 0, maxValue: 1 } });
@@ -177,7 +182,13 @@ export function PriceChart({ collectionId }: Props) {
         } else {
           refLineRef.current?.setData([]);
         }
-        chartRef.current?.timeScale().fitContent();
+        // Fit only when the market or timeframe changed; preserve the user's
+        // manual zoom/pan across realtime candle updates.
+        const fitKey = `${collectionId}|${timeframe}`;
+        if (fitKeyRef.current !== fitKey) {
+          chartRef.current?.timeScale().fitContent();
+          fitKeyRef.current = fitKey;
+        }
         setEmpty(yesSeries.length === 0);
       })
       .catch(() => setEmpty(true));
