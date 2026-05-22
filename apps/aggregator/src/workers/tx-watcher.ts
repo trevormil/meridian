@@ -304,7 +304,13 @@ async function backfillHistoricalFills(): Promise<void> {
   for (const m of markets) {
     try {
       const fills = await searchHistoricalFills(m.collection_id, 200);
-      for (const f of fills) recordFill(f);
+      for (const f of fills) {
+        // Record touched-market index for both parties (mints/fills/redeems)
+        // — the backfill bypasses ingestEvents, so do it here too.
+        recordHolding(f.from, f.collectionId);
+        recordHolding(f.to, f.collectionId);
+        recordFill(f);
+      }
       fillTotal += fills.length;
     } catch (e) {
       console.warn(`[tx-watcher] fill backfill failed for #${m.collection_id}:`, (e as Error).message);
