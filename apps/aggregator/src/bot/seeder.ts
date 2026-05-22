@@ -195,9 +195,11 @@ async function seedOne(
       all.push(makeBuyIntent(signer.address, collectionId, 'no', q, p));
     }
   }
-  // 50-msg batches (~500k gas) now fit comfortably under the bot client's
-  // 2M gas limit (set in getBotSigner). 108 orders → 3 batches.
-  const CHUNK = 50;
+  // The chain's approval-overlap check (UniversalRemoveOverlaps) costs gas
+  // ~QUADRATICALLY in the number of approvals added per tx: 35-order batch
+  // ≈ 492k gas, 50-order ≈ 2M+ (blew the 2M limit). So keep batches small —
+  // 20 orders ≈ ~200k gas, well under the 2M client limit. 108 → 6 batches.
+  const CHUNK = 20;
   for (let i = 0; i < all.length; i += CHUNK) {
     const slice = all.slice(i, i + CHUNK);
     const ord = await botBroadcast(
