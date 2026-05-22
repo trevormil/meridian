@@ -33,7 +33,7 @@ async function flush(): Promise<void> {
 
   try {
     const r = await fetch(
-      `${env.aggregatorUrl}/api/v0/predictions/sparklines?ids=${ids.join(',')}&timeframe=10m&points=24`,
+      `${env.aggregatorUrl}/api/v0/predictions/sparklines?ids=${ids.join(',')}&timeframe=10m&points=10`,
     );
     const j = (await r.json()) as { sparklines?: Record<string, Series> };
     const map = j.sparklines ?? {};

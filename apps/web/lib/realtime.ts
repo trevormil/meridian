@@ -17,6 +17,12 @@ import { env } from './env';
 
 type Listener<T = unknown> = (data: T) => void;
 
+/** Channels whose last snapshot is worth persisting across hard reloads.
+ *  The browse list is the big perceived-latency win; per-market channels are
+ *  cheap to re-snapshot so we don't bloat sessionStorage with them. */
+const PERSIST_CHANNELS = new Set(['markets']);
+const PERSIST_PREFIX = 'meridian:rt:';
+
 class Realtime {
   private ws: WebSocket | null = null;
   private listeners = new Map<string, Set<Listener>>();
@@ -27,6 +33,32 @@ class Realtime {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectDelayMs = 500;
   private intentionallyClosed = false;
+
+  constructor() {
+    // Hydrate persisted snapshots so a HARD reload (empty in-memory cache)
+    // paints the browse list instantly from the last-seen value, then the WS
+    // revalidates. Wrapped in try/catch — sessionStorage can throw in private
+    // mode / SSR.
+    if (typeof window !== 'undefined') {
+      for (const channel of PERSIST_CHANNELS) {
+        try {
+          const raw = sessionStorage.getItem(PERSIST_PREFIX + channel);
+          if (raw) this.cache.set(channel, JSON.parse(raw));
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }
+
+  private persist(channel: string, data: unknown): void {
+    if (!PERSIST_CHANNELS.has(channel) || typeof window === 'undefined') return;
+    try {
+      sessionStorage.setItem(PERSIST_PREFIX + channel, JSON.stringify(data));
+    } catch {
+      // quota / serialization — non-fatal
+    }
+  }
 
   /** Connect (idempotent). Called automatically on first subscribe. */
   private connect(): void {
@@ -54,6 +86,7 @@ class Realtime {
       }
       if (!msg.channel) return;
       this.cache.set(msg.channel, msg.data);
+      this.persist(msg.channel, msg.data);
       const set = this.listeners.get(msg.channel);
       if (!set) return;
       for (const fn of set) {
@@ -137,6 +170,18 @@ class Realtime {
   warmup(): void {
     if (typeof window === 'undefined') return;
     if (!this.ws || this.ws.readyState === WebSocket.CLOSED) this.connect();
+  }
+
+  /** Seed a channel's cache from a non-WS source (e.g. a REST fetch on cold
+   *  load) so the UI paints before the socket connects. Notifies listeners +
+   *  persists, just like an incoming message. A subsequent WS snapshot for the
+   *  same channel overwrites it. No-op if the WS already delivered a value. */
+  seed<T>(channel: string, data: T): void {
+    if (this.cache.has(channel)) return; // WS already won — don't clobber
+    this.cache.set(channel, data);
+    this.persist(channel, data);
+    const set = this.listeners.get(channel);
+    if (set) for (const fn of set) (fn as Listener<T>)(data);
   }
 }
 

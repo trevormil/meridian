@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { aggregator, type MarketDto } from '@/lib/aggregator';
 import { useWallet } from '@/contexts/WalletContext';
 import { useRealtime } from '@/lib/useRealtime';
-import { ch } from '@/lib/realtime';
+import { ch, realtime, getCached } from '@/lib/realtime';
 import { resolveApprovals, type SettlementApprovals } from '@/lib/prediction-market/sdk';
 import { Tabs } from '@/components/ui/Tabs';
 import { MarketOverviewTab } from '@/components/prediction/MarketOverviewTab';
@@ -26,6 +26,21 @@ export default function MarketPage() {
 
   // Realtime market data — server pushes on price/status/volume changes.
   const market = useRealtime<MarketDto>(ch.market(id));
+
+  // Cold-load fast path: REST-seed the single-market channel so the page
+  // paints before the WS connects. seed() is a no-op once the socket snapshots.
+  useEffect(() => {
+    let alive = true;
+    if (!getCached<MarketDto>(ch.market(id))) {
+      aggregator
+        .getMarket(id)
+        .then((m) => alive && m && realtime.seed(ch.market(id), m))
+        .catch(() => {});
+    }
+    return () => {
+      alive = false;
+    };
+  }, [id]);
 
   // Approvals come from the raw collection JSON, which only changes when the
   // collection is re-fetched by bootstrap. Fetch once per collection via REST.

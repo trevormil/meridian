@@ -50,6 +50,9 @@ function serializeMarket(r: MarketRow): unknown {
 
 predictions.get('/predictions', (c) => {
   const rows = getDb().prepare('SELECT * FROM markets ORDER BY created_at DESC LIMIT 100').all() as MarketRow[];
+  // The WS pushes live updates; this REST list is only the cold-load seed, so
+  // a few seconds of staleness is fine and lets the browser dedupe rapid hits.
+  c.header('cache-control', 'public, max-age=5');
   return c.json({ predictions: rows.map(serializeMarket) });
 });
 

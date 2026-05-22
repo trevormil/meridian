@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { aggregator, type MarketDto } from '@/lib/aggregator';
 import { useRealtime } from '@/lib/useRealtime';
-import { ch } from '@/lib/realtime';
+import { ch, realtime } from '@/lib/realtime';
 import { MarketCard } from '@/components/prediction/MarketCard';
 import { Button } from '@/components/ui/Button';
 import { Empty, Skeleton } from '@/components/ui/Empty';
@@ -41,6 +41,23 @@ export default function HomePage() {
   const [tab, setTab] = useState<Tab>('active');
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Cold-load fast path: if neither the in-memory cache nor a persisted
+  // snapshot has the list yet, fetch it via REST in parallel with the WS
+  // connecting. A plain GET (~0.4s) paints far sooner than the WS handshake
+  // + snapshot; realtime.seed() is a no-op once the socket delivers.
+  useEffect(() => {
+    if (markets) return;
+    let alive = true;
+    aggregator
+      .listMarkets()
+      .then((m) => alive && realtime.seed(ch.markets, m))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const counts = useMemo<Record<Tab, number>>(() => {
     const c: Record<Tab, number> = { active: 0, yes: 0, no: 0, push: 0, other: 0 };

@@ -94,15 +94,18 @@ export function MarketCard({ market }: Props) {
 
         {/* Probability bar — the visual anchor */}
         <div className="space-y-2">
-          <div className="flex items-end justify-between">
+          <div className="flex items-baseline justify-between">
             <span className="eyebrow">YES</span>
-            {/* 10m-candle trend glance — lazy-loaded, trend-colored */}
-            <Sparkline collectionId={market.collectionId} className="mx-3 flex-1" height={28} />
-            <span className="shrink-0 font-mono text-2xl font-semibold leading-none text-yes-bright">
+            <span className="font-mono text-2xl font-semibold leading-none text-yes-bright">
               {yesPct}<span className="text-base text-yes/60">%</span>
             </span>
           </div>
           <ProbabilityBar yesPrice={market.yesPrice} noPrice={market.noPrice} size="md" />
+        </div>
+
+        {/* Condensed dual-line price glance (YES green / NO red), 10m candles */}
+        <div className="mt-3">
+          <Sparkline collectionId={market.collectionId} height={44} />
         </div>
 
         {/* Footer: volume + ID */}

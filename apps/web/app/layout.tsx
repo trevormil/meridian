@@ -51,8 +51,19 @@ export const viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const apiOrigin = process.env.NEXT_PUBLIC_AGGREGATOR_URL;
   return (
     <html lang="en" className={`${fraunces.variable} ${jetbrains.variable}`}>
+      <head>
+        {/* Warm the connections first paint depends on: the Switzer webfont
+            host (render-blocking @import in globals.css) and the aggregator
+            API/WS origin (cold-load market list + sparklines). preconnect
+            does DNS + TLS up front so the actual fetches start sooner. */}
+        <link rel="preconnect" href="https://api.fontshare.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://cdn.fontshare.com" crossOrigin="anonymous" />
+        {apiOrigin && <link rel="preconnect" href={apiOrigin} crossOrigin="anonymous" />}
+        {apiOrigin && <link rel="dns-prefetch" href={apiOrigin} />}
+      </head>
       <body className="font-sans">
         <WalletProvider>
           <ToastProvider>
