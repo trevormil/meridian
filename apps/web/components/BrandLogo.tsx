@@ -28,7 +28,7 @@ export function BrandLogo() {
           />
         )}
       </span>
-      <span className="font-display text-xl font-semibold leading-none tracking-marquee text-ink transition-colors group-hover:text-gold-bright">
+      <span className="text-gold-gradient font-display text-xl font-bold leading-none tracking-marquee group-hover:brightness-110">
         Meridian
       </span>
     </Link>

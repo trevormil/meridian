@@ -90,7 +90,7 @@ export default function HomePage() {
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4 sm:mb-8 sm:gap-6">
           <div>
             <span className="eyebrow">Today · MAG7 closing prices</span>
-            <h1 className="mt-2 font-display text-4xl font-semibold leading-none tracking-marquee text-ink sm:mt-3 sm:text-6xl">
+            <h1 className="text-gold-gradient mt-2 font-display text-4xl font-bold leading-[1.05] tracking-marquee sm:mt-3 sm:text-6xl">
               Markets
             </h1>
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink-dim sm:mt-4">

@@ -164,6 +164,19 @@ input:focus-visible,
   filter: drop-shadow(0 6px 24px rgba(232, 177, 74, 0.28));
 }
 
+/* Lighter sibling — same gold→orange→crimson clip, no glow. For the header
+   brand + page titles where the gradient should read as a warm accent, not a
+   spotlit hero. `transition: filter` lets a parent `group-hover:brightness`
+   lift it (gradient text can't take a plain color hover). */
+.text-gold-gradient {
+  background: linear-gradient(100deg, #F4C766 0%, #E8B14A 42%, #D9772E 74%, #D93826 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  transition: filter 150ms ease;
+}
+
 /* Stacking: HeroAtmosphere at z:0, grain overlay at z:1, content at z:2 */
 main, header, footer { position: relative; z-index: 2; }
 
