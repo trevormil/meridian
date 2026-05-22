@@ -11,7 +11,6 @@ import { bootstrapScan, startBootstrapLoop } from './workers/bootstrap.js';
 import { startPricePoller } from './workers/price-poller.js';
 import { startStatsPoller } from './workers/stats-poller.js';
 import { startTxWatcher } from './workers/tx-watcher.js';
-import { startBlockWatcher } from './workers/block-watcher.js';
 import { startSeeder } from './bot/seeder.js';
 import { startMarketMakerBot } from './bot/market-maker.js';
 import { handleOpen, handleClose, handleMessage } from './ws.js';
@@ -59,16 +58,14 @@ if (process.env.AGGREGATOR_RESET === 'cursor') {
 startBootstrapLoop();
 startPricePoller();
 startStatsPoller();
-// tx-watcher subscribes to live tx events + backfills last ~500 blocks at
-// startup so historical fills get indexed even after a fresh DB wipe.
+// tx-watcher: backfill-only (HTTP tx_search every 90s). The live Tendermint
+// WS is disabled — it can't handshake from inside the container and cosmjs
+// socket-retries it in a storm that pins the chain CPU.
 startTxWatcher().catch((e) => {
-  console.warn('[tx-watcher] live subscribe disabled —', (e as Error).message);
-  console.warn('[tx-watcher] aggregator still serves cached data; fills detected only on next 5-block tick');
+  console.warn('[tx-watcher] backfill failed to start —', (e as Error).message);
 });
-// Legacy block-watcher kept as fallback; safe to call even when WS is down.
-startBlockWatcher().catch((e) => {
-  console.warn('[block-watcher] disabled —', (e as Error).message);
-});
+// block-watcher NOT started: it's pure NewBlock WS (same storm), and the
+// bootstrap scan + morning script already discover new markets over HTTP.
 
 // SEED_MODE liquidity seeder — opt-in via env. No-op when fixture missing.
 startSeeder();

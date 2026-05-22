@@ -1,4 +1,3 @@
-import { Tendermint37Client } from '@cosmjs/tendermint-rpc';
 import { convertToBitBadgesAddress } from 'bitbadges';
 import { env } from '../env.js';
 import { getDb } from '../db/index.js';
@@ -65,20 +64,14 @@ export async function startTxWatcher(): Promise<() => void> {
   // transfers immediately, so freshness doesn't depend on this loop.
   const backfillTimer = setInterval(() => void runBackfill(), 90_000);
 
-  const client = await Tendermint37Client.connect(env.tendermintWsUrl);
-  console.log('[tx-watcher] subscribed to live tx events at', env.tendermintWsUrl);
-  const stream = client.subscribeTx();
-  const sub = stream.subscribe({
-    next: (evt: unknown) => {
-      handleLiveTx(evt).catch((e) => console.error('[tx-watcher]', e));
-    },
-    error: (err) => console.error('[tx-watcher] stream error:', err),
-    complete: () => console.log('[tx-watcher] stream complete'),
-  });
+  // NOTE: the live Tendermint subscribeTx WS is intentionally NOT used. The
+  // chain→container WS (host.docker.internal) never completes its handshake,
+  // and cosmjs busy-retries it at the socket level — that storm pinned the
+  // chain at ~290% CPU. We rely on the 90s backfill (HTTP tx_search) + the
+  // market-maker's own post-fill publish for fill capture instead.
+  console.log('[tx-watcher] backfill-only mode (live WS disabled — container WS unsupported)');
   return () => {
     clearInterval(backfillTimer);
-    sub.unsubscribe();
-    client.disconnect();
   };
 }
 
