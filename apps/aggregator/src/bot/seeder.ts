@@ -199,6 +199,15 @@ async function seedOne(
     mintApprovalId,
   );
   const dep = await botBroadcast(signer, [depositMsg], `seed:deposit(#${collectionId},${depositAmount})`);
+  // Same over-seeded recognition as the orders loop: if even the deposit
+  // (which re-writes the bot's balance store) runs out of gas, the collection
+  // is so laden with accumulated approvals/state from earlier interrupted runs
+  // that it's plainly already liquid. Mark seeded instead of failing + looping.
+  if (dep && dep.code === 11) {
+    console.log(`[seeder] #${collectionId} deposit overlap-gas — already over-seeded, marking seeded`);
+    mark(collectionId, 'seeded');
+    return;
+  }
   if (!dep || dep.code !== 0) throw new Error('deposit step failed');
 
   // STEP 2: post all limit orders in a single tx. Chain accepts an arbitrary
