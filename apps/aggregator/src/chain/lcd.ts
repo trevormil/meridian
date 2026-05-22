@@ -144,18 +144,3 @@ export async function getVotes(
   }
 }
 
-export interface GammPool {
-  id: string;
-  pool_assets: Array<{ token: { denom: string; amount: string }; weight: string }>;
-  [k: string]: any;
-}
-
-export async function getPool(poolId: string): Promise<GammPool | null> {
-  try {
-    const res = await lcdGet<{ pool: GammPool }>(`/bitbadges/bitbadgeschain/gamm/v1/pools/${poolId}`);
-    return res.pool;
-  } catch (e) {
-    if (e instanceof LcdNotFoundError) return null;
-    throw e;
-  }
-}
