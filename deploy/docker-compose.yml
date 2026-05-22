@@ -32,8 +32,12 @@ services:
       TENDERMINT_WS_URL: "${CHAIN_WS_URL:-ws://host.docker.internal:26657/websocket}"
       PORT: "4001"
       SEED_MODE: "true"
-      BLOCK_CHECK_INTERVAL_MS: "1500"
-      PRICE_POLL_EVERY_BLOCKS: "1"
+      # Low-frequency on purpose: pollPricesOnce (gamm pools) + refreshAllIntents
+      # fire per tick across ALL markets; every-block polling pinned the chain
+      # at ~290% CPU. Prediction-market prices come from fills (realtime via the
+      # market-maker), not pool polling, so 30-block / 10s is plenty.
+      BLOCK_CHECK_INTERVAL_MS: "10000"
+      PRICE_POLL_EVERY_BLOCKS: "30"
       BOOTSTRAP_MAX_COLLECTION_ID: "5000"
     volumes:
       # SQLite + WAL files survive container restarts.
