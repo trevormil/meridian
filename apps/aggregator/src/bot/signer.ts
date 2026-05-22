@@ -93,7 +93,14 @@ async function doBotBroadcast(
 ): Promise<{ txHash: string; code: number; rawLog: string } | null> {
   if (!envelopes.length) return null;
   const messages = encodeMsgsFromJson(envelopes as any[]);
-  const r = await signer.client.signAndBroadcast(messages as any);
+  // Zero-fee txs (testnet, min-gas-prices=0). amount '0' overrides the SDK's
+  // computed gasLimit×price fee, so the bot never spends ubadge on gas — the
+  // seeder + arb bot would otherwise drain their BADGE over thousands of txs
+  // (which is exactly what stalled seeding). gas still covers execution
+  // (the overlap check needs the budget); only the fee paid is 0.
+  const r = await signer.client.signAndBroadcast(messages as any, {
+    fee: { amount: '0', denom: 'ubadge', gas: '1000000' },
+  } as any);
   if (!r.success) {
     console.warn(`[bot] ${label} mempool-rejected: ${r.error ?? r.code}`);
     return null;
