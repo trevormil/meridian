@@ -59,7 +59,11 @@ export async function startTxWatcher(): Promise<() => void> {
     }
   };
   void runBackfill();
-  const backfillTimer = setInterval(() => void runBackfill(), 30_000);
+  // 90s (was 30s) — the full sweep is heavy (~90 tx_search calls) and the
+  // index is mostly maintenance once populated; the slower cadence frees chain
+  // capacity for seed-order commits. Live subscribeTx still indexes new
+  // transfers immediately, so freshness doesn't depend on this loop.
+  const backfillTimer = setInterval(() => void runBackfill(), 90_000);
 
   const client = await Tendermint37Client.connect(env.tendermintWsUrl);
   console.log('[tx-watcher] subscribed to live tx events at', env.tendermintWsUrl);

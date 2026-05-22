@@ -78,7 +78,7 @@ export async function botBroadcast(
   return { txHash: r.txHash, code: commit.code, rawLog: commit.rawLog };
 }
 
-async function waitForCommit(txHash: string, timeoutMs = 10_000): Promise<{ code: number; rawLog: string } | null> {
+async function waitForCommit(txHash: string, timeoutMs = 20_000): Promise<{ code: number; rawLog: string } | null> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     try {
