@@ -93,15 +93,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <NavLink href="/create">Create</NavLink>
                 </nav>
 
-                {/* Right cluster — testnet badge + connect */}
-                <div className="ml-auto flex items-center gap-3 sm:ml-0">
+                {/* Right cluster — testnet badge + connect. min-w-0 lets it
+                    shrink so a connected-wallet pill can't bleed off-screen. */}
+                <div className="ml-auto flex min-w-0 items-center gap-2 sm:ml-0 sm:gap-3">
                   <span className="hidden items-center gap-1.5 rounded-sm border border-amber/30 bg-amber/5 px-2 py-1 md:inline-flex">
                     <span className="h-1 w-1 rounded-full bg-amber" />
                     <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-amber">
                       Testnet
                     </span>
                   </span>
-                  <span className="h-5 w-px bg-border" />
+                  <span className="hidden h-5 w-px bg-border md:inline-block" />
                   <ConnectButton />
                 </div>
               </div>

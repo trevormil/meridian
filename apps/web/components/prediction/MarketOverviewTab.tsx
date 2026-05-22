@@ -16,33 +16,25 @@ interface Props {
 /**
  * Merged trading view (was two tabs: Market + Order Book).
  *
- * Layout via a 3-col grid with DOM order [chart, place-order, book, info]
- * and col-spans 2/1/2/1. Grid auto-placement lands them as:
- *   ┌─────────────── chart ──────────────┐ ┌─ place order ─┐
- *   └──────────────── book ──────────────┘ └──── info ─────┘
- * The same DOM order collapses to a sensible single-column mobile stack:
- *   chart → place order → order book → info (trade action stays near the top).
+ * Two independent column stacks so the order book hugs the chart with no
+ * row-height coupling (a 3-col unified grid stretched row 1 to the taller
+ * place-order form, leaving a gap under the chart):
+ *   left  (2/3): chart → order book   (stacked, small gap)
+ *   right (1/3): place order → market info
+ * On mobile both columns collapse: chart → order book → place order → info.
  */
 export function MarketOverviewTab({ market }: Props) {
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-      {/* row 1, left (span 2) */}
-      <div className="lg:col-span-2">
+      {/* Left column — chart then order book directly beneath it */}
+      <div className="flex flex-col gap-4 lg:col-span-2">
         <PriceChart collectionId={market.collectionId} />
-      </div>
-
-      {/* row 1, right — place order sits at the top of the right column */}
-      <div className="lg:col-span-1">
-        <PlaceOrderCard market={market} />
-      </div>
-
-      {/* row 2, left (span 2) — order book beneath the chart */}
-      <div className="lg:col-span-2">
         <OrderBookCard market={market} />
       </div>
 
-      {/* row 2, right — market info beneath the order form */}
-      <div className="lg:col-span-1">
+      {/* Right column — place order on top, market info beneath */}
+      <div className="flex flex-col gap-4 lg:col-span-1">
+        <PlaceOrderCard market={market} />
         <Card>
           <CardHeader>
             <CardTitle>Market info</CardTitle>

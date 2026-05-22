@@ -1,0 +1,18 @@
+# Keep the Docker build context small + reproducible. The Dockerfiles run
+# their own `bun install` + build inside the image, so host node_modules /
+# build output must NOT be sent (1.4GB+, and would mask the clean install).
+**/node_modules
+**/.next
+**/dist
+**/.turbo
+**/coverage
+**/test-results
+**/playwright-report
+**/.git
+**/*.log
+apps/aggregator/data
+apps/aggregator/fixtures
+**/.env
+**/.env.*
+deploy/.env
+.DS_Store

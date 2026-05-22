@@ -61,15 +61,23 @@ export function Sparkline({ collectionId, className, height = 44 }: Props) {
 
   const W = 100;
   const H = height;
-  const pad = 3;
+  // Flush horizontally (padX 0) so the chart spans edge-to-edge, aligned with
+  // the probability bar above it. Small vertical pad so the line + stroke
+  // don't clip at top/bottom.
+  const padX = 0;
+  const padY = 3;
+  // Tiny vertical separation between the two lines so YES (green) and NO (red)
+  // are BOTH visible even on a flat 50/50 market where they'd otherwise sit
+  // exactly on top of each other at the midline.
+  const SEP = 1.4;
 
   const yes = pts && pts.length >= 2 ? pts : null;
   const no = yes ? yes.map((v) => 1 - v) : null;
 
-  function toCoords(series: number[]) {
+  function toCoords(series: number[], yOffset = 0) {
     return series.map((v, i) => {
-      const x = pad + (i / (series.length - 1)) * (W - pad * 2);
-      const y = pad + (1 - Math.min(1, Math.max(0, v))) * (H - pad * 2);
+      const x = padX + (i / (series.length - 1)) * (W - padX * 2);
+      const y = padY + (1 - Math.min(1, Math.max(0, v))) * (H - padY * 2) + yOffset;
       return [x, y] as const;
     });
   }
@@ -80,8 +88,10 @@ export function Sparkline({ collectionId, className, height = 44 }: Props) {
     return `${linePath(coords)} L${coords[coords.length - 1][0].toFixed(1)} ${H} L${coords[0][0].toFixed(1)} ${H} Z`;
   }
 
-  const yesC = yes ? toCoords(yes) : null;
-  const noC = no ? toCoords(no) : null;
+  // YES lifted slightly, NO pushed down — keeps both lines visible even when
+  // the market is a flat 50/50 (otherwise they coincide on the midline).
+  const yesC = yes ? toCoords(yes, -SEP) : null;
+  const noC = no ? toCoords(no, SEP) : null;
   const gid = `spk-${collectionId}`;
 
   return (
@@ -97,9 +107,9 @@ export function Sparkline({ collectionId, className, height = 44 }: Props) {
             </defs>
             {/* faint 50% midline */}
             <line
-              x1={pad}
+              x1={padX}
               y1={H / 2}
-              x2={W - pad}
+              x2={W - padX}
               y2={H / 2}
               stroke="rgba(122,112,96,0.18)"
               strokeWidth="1"
@@ -112,8 +122,7 @@ export function Sparkline({ collectionId, className, height = 44 }: Props) {
               d={linePath(noC)}
               fill="none"
               stroke="#D93826"
-              strokeOpacity="0.85"
-              strokeWidth="1.3"
+              strokeWidth="1.5"
               strokeLinejoin="round"
               strokeLinecap="round"
               vectorEffect="non-scaling-stroke"
@@ -130,9 +139,9 @@ export function Sparkline({ collectionId, className, height = 44 }: Props) {
           </>
         ) : (
           <line
-            x1={pad}
+            x1={padX}
             y1={H / 2}
-            x2={W - pad}
+            x2={W - padX}
             y2={H / 2}
             stroke="rgba(122,112,96,0.25)"
             strokeWidth="1"

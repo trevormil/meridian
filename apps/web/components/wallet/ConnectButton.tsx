@@ -155,13 +155,30 @@ export function ConnectButton() {
           />
         </span>
         <span
-          className={`inline-block w-3 text-center text-[10px] ${copied ? 'text-yes' : 'text-muted group-hover:text-ink'}`}
+          className={`inline-flex w-3.5 items-center justify-center ${copied ? 'text-yes' : 'text-muted group-hover:text-ink'}`}
           aria-live="polite"
         >
-          {copied ? '✓' : '📋'}
+          {copied ? (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          ) : (
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="9" width="11" height="11" rx="2" />
+              <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+            </svg>
+          )}
         </span>
       </button>
-      <Button variant="ghost" size="sm" onClick={w.disconnect} data-testid="disconnect">
+      {/* Disconnect is hidden on mobile to keep the header from overflowing —
+          tap the address pill to copy; full disconnect lives on ≥ sm. */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={w.disconnect}
+        data-testid="disconnect"
+        className="hidden sm:inline-flex"
+      >
         Disconnect
       </Button>
     </div>

@@ -32,10 +32,24 @@ body {
   }
 }
 
+/* Hard-lock horizontal scroll app-wide. Belt-and-suspenders: clip on html
+   (no scroll container side-effects with the sticky header) + hidden on body
+   + max-width pin so no stray wide element (auroras, full-bleed strips, a
+   long wallet address) can ever introduce an x-scrollbar. Content wraps. */
+html {
+  overflow-x: clip;
+  max-width: 100vw;
+}
+
 body {
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
+  max-width: 100vw;
+  /* Long unbreakable strings (0x addresses, tx hashes) wrap as a last resort
+     instead of pushing the layout wider than the viewport. break-word (not
+     anywhere) so short numerics in tight cells aren't split mid-value. */
+  overflow-wrap: break-word;
 }
 
 /* Film-grain overlay sits ABOVE the HeroAtmosphere (z:0) but below content (z:2).
