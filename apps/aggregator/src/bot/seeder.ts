@@ -195,11 +195,15 @@ async function seedOne(
       all.push(makeBuyIntent(signer.address, collectionId, 'no', q, p));
     }
   }
-  // The chain's approval-overlap check (UniversalRemoveOverlaps) costs gas
-  // ~QUADRATICALLY in the number of approvals added per tx: 35-order batch
-  // ≈ 492k gas, 50-order ≈ 2M+ (blew the 2M limit). So keep batches small —
-  // 20 orders ≈ ~200k gas, well under the 2M client limit. 108 → 6 batches.
-  const CHUNK = 20;
+  // ONE approval per tx, sent sequentially (each botBroadcast awaits commit
+  // before the next). Rationale: the chain's overlap check (the revert log's
+  // "out of gas in location: UniversalRemoveOverlaps") gets expensive when a
+  // single tx adds many approvals — each new one is checked against the others
+  // in the same tx. Adding one at a time means each tx's check is only against
+  // the already-committed set (bounded; even the 108th ≈ ~250k gas). Tiny txs
+  // commit reliably under load, and the account sequence advances cleanly
+  // between commits. Slower (108 commits/market) but robust.
+  const CHUNK = 1;
   for (let i = 0; i < all.length; i += CHUNK) {
     const slice = all.slice(i, i + CHUNK);
     const ord = await botBroadcast(

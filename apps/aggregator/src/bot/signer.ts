@@ -45,12 +45,12 @@ export async function getBotSigner(): Promise<{ client: BitBadgesSigningClient; 
     cosmosChainId: 'bitbadges-1',
     evmChainId: 90123,
     evmRpcUrl: env.rpcHttpUrl,
-    // Right-sized for a CHUNK=20 approval batch (~250k gas after the quadratic
-    // overlap check) with margin. NOT higher: gasWanted reserves space in the
-    // block's gas meter, so an oversized limit (we tried 2M) lets only a few
-    // txs per block → seed txs queue + miss the commit window. 600k commits
-    // promptly AND covers the batch.
-    defaultGasLimit: 600_000,
+    // 1M covers a single-approval seed tx even late in a market's sequence
+    // (the 108th approval's overlap check against ~107 existing ≈ ~250k). The
+    // seeder sends one tx at a time and waits for commit, so there's never
+    // more than ~one bot tx in flight — a high gasWanted no longer starves the
+    // block (the problem when we batched at 2M), it just leaves headroom.
+    defaultGasLimit: 1_000_000,
   });
   cachedAddress = fx.address;
   return { client: cachedClient, address: cachedAddress };
