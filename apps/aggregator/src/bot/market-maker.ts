@@ -1,4 +1,6 @@
+import { Tendermint37Client } from '@cosmjs/tendermint-rpc';
 import { buildPredictionMarketDepositMsg } from 'bitbadges';
+import { env } from '../env.js';
 import { getDb } from '../db/index.js';
 import { listIntentsByCollection } from '../db/intents.js';
 import { getBotSigner, botBroadcast } from './signer.js';
@@ -20,7 +22,6 @@ import { getBotSigner, botBroadcast } from './signer.js';
  * orders inside the band. No arbitrage, no order-crossing — just a counterparty
  * that always takes a fair-priced trade.
  */
-const SCAN_INTERVAL_MS = 3_000;
 const BAND_LO = 0.4;
 const BAND_HI = 0.6;
 // Skip absurdly large orders so a single fill can't drain the bot. Demo orders
@@ -205,7 +206,6 @@ async function executeFill(signer: { client: any; address: string }, c: FillCand
 }
 
 export function startMarketMakerBot(): () => void {
-  let timer: ReturnType<typeof setInterval> | null = null;
   let inFlight = false;
 
   const tick = async () => {
@@ -235,18 +235,29 @@ export function startMarketMakerBot(): () => void {
           }
         }
       }
-      if (filled > 0 || (found > 0 && Math.random() < 0.05)) {
-        console.log(`[mm] scan: ${found} band orders, ${filled} filled, ${cooling} cooling`);
-      }
+      if (filled > 0) console.log(`[mm] scan: ${found} band orders, ${filled} filled, ${cooling} cooling`);
     } finally {
       inFlight = false;
     }
   };
 
-  void tick();
-  timer = setInterval(tick, SCAN_INTERVAL_MS);
-  console.log(`[mm] market-maker armed — auto-fills ${BAND_LO}–${BAND_HI} band every ${SCAN_INTERVAL_MS / 1000}s`);
-  return () => {
-    if (timer) clearInterval(timer);
-  };
+  // Run the fill scan on EVERY new block (so a user order is consumed within
+  // ~one block of landing). The inFlight guard skips a block if the previous
+  // scan's fills are still broadcasting — the next block re-checks anyway.
+  let cleanup = () => {};
+  void (async () => {
+    const client = await Tendermint37Client.connect(env.tendermintWsUrl);
+    const sub = client.subscribeNewBlock().subscribe({
+      next: () => void tick(),
+      error: (e) => console.error('[mm] block stream error:', e),
+    });
+    cleanup = () => {
+      sub.unsubscribe();
+      client.disconnect();
+    };
+    void tick(); // sweep once immediately on connect
+    console.log(`[mm] market-maker armed — auto-fills ${BAND_LO}–${BAND_HI} band every block`);
+  })().catch((e) => console.error('[mm] connect failed:', e));
+
+  return () => cleanup();
 }
