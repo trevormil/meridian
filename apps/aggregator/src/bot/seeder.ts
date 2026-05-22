@@ -195,15 +195,14 @@ async function seedOne(
       all.push(makeBuyIntent(signer.address, collectionId, 'no', q, p));
     }
   }
-  // ONE approval per tx, sent sequentially (each botBroadcast awaits commit
-  // before the next). Rationale: the chain's overlap check (the revert log's
-  // "out of gas in location: UniversalRemoveOverlaps") gets expensive when a
-  // single tx adds many approvals — each new one is checked against the others
-  // in the same tx. Adding one at a time means each tx's check is only against
-  // the already-committed set (bounded; even the 108th ≈ ~250k gas). Tiny txs
-  // commit reliably under load, and the account sequence advances cleanly
-  // between commits. Slower (108 commits/market) but robust.
-  const CHUNK = 1;
+  // 5 approvals per tx, sent sequentially (each botBroadcast awaits commit).
+  // Sweet spot between robustness and speed on this slow node (~0.9s/query →
+  // ~5s/tx regardless of block time): small enough that the overlap check
+  // (revert log: "out of gas in location: UniversalRemoveOverlaps") stays
+  // bounded even on the last batch — 5 approvals × ~100 already-committed ≈
+  // ~815k gas, under the 1M limit — but 5× fewer txs than one-at-a-time, so a
+  // market seeds in ~2 min instead of ~9. Bigger chunks risk the gas edge.
+  const CHUNK = 5;
   for (let i = 0; i < all.length; i += CHUNK) {
     const slice = all.slice(i, i + CHUNK);
     const ord = await botBroadcast(
