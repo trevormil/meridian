@@ -34,6 +34,12 @@ import { syncIntentsForOwner } from '../db/intents.js';
  * Total: ~425 USDC per market. With 100M USDC bot balance, supports >200k markets.
  */
 
+// A market with at least this many active intents is considered already
+// seeded (the idempotency guard skips it). 24 = solid 2-sided depth; well
+// below the full 108 target so a genuinely-empty or barely-started market
+// still gets a full seed, but anything substantially liquid is left alone.
+const SEED_MIN_INTENTS = 24;
+
 const QUANTITIES: readonly bigint[] = [1_000_000n, 5_000_000n, 10_000_000n] as const;
 const SELL_PRICES = [0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95] as const;
 const BUY_PRICES = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45] as const;
@@ -162,6 +168,23 @@ async function seedOne(
   }
   const mintApprovalId = findApprovalId(collection, 'pm-mint-');
   if (!mintApprovalId) throw new Error('no pm-mint approval — not a prediction market');
+
+  // Idempotency guard. The seed uses nonce'd approval IDs, so a re-run posts
+  // NEW orders rather than replacing — re-running stacks duplicates (and on an
+  // already-full market the overlap check blows the gas limit → revert loop).
+  // If the market already has decent liquidity, treat it as done. This makes
+  // the sweep safe to re-run and stops it re-piling / failing on markets that
+  // accumulated extra orders during interrupted runs.
+  const existing = (
+    getDb()
+      .prepare('SELECT COUNT(*) n FROM intents WHERE collection_id = ? AND is_active = 1')
+      .get(collectionId) as { n: number }
+  ).n;
+  if (existing >= SEED_MIN_INTENTS) {
+    console.log(`[seeder] #${collectionId} already has ${existing} active intents — marking seeded, skipping`);
+    mark(collectionId, 'seeded');
+    return;
+  }
 
   mark(collectionId, 'in_progress');
 
