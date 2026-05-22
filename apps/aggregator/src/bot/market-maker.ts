@@ -5,6 +5,8 @@ import { getBotSigner, botBroadcast } from './signer.js';
 import { searchHistoricalFills } from '../chain/events.js';
 import { recordFill } from '../workers/tx-watcher.js';
 import { recordCandle, updateMarketPrice } from '../db/candles.js';
+import { publish, channel } from '../pubsub.js';
+import { snapshotIntentsOwner, snapshotIntents } from '../snapshots.js';
 
 /**
  * Demo market-maker bot (replaces the arbitrage bot).
@@ -214,6 +216,12 @@ async function executeFill(signer: { client: any; address: string }, c: FillCand
     getDb()
       .prepare('UPDATE intents SET used = 1, is_active = 0 WHERE collection_id = ? AND owner_address = ? AND approval_id = ?')
       .run(c.collectionId, c.intent.owner_address, c.intent.approval_id);
+    // Push the owner's updated order list so the in-app OrderFillWatcher sees
+    // the order flip to filled and fires its "order filled" toast. (A raw DB
+    // update alone wouldn't notify any subscriber.)
+    publish(channel.intentsOwner(c.intent.owner_address), snapshotIntentsOwner(c.intent.owner_address));
+    // Also refresh the collection order book so the filled order leaves the book.
+    publish(channel.intents(c.collectionId), snapshotIntents(c.collectionId));
     // INSTANT price/chart publish from the fill data we already have — no chain
     // round-trip — so the chart + cards + price update the moment the fill
     // commits. (A YES fill at p → yesPrice p; a NO fill at p → yesPrice 1-p.)
