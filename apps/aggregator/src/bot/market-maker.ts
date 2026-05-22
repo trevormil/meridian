@@ -207,6 +207,12 @@ async function executeFill(signer: { client: any; address: string }, c: FillCand
     // price update in realtime — the live chain WS hangs in this container, so
     // we can't rely on the tx-watcher catching it; instead we scan THIS market's
     // recent fills (recordFill is idempotent + publishes candle/market/fills).
+    // Mark the order used so the next 800ms scan doesn't retry an already-
+    // consumed order (Meridian intents are afterOneUse → one fill consumes
+    // them). Without this the bot re-attempts + reverts code=71 until cooldown.
+    getDb()
+      .prepare('UPDATE intents SET used = 1, is_active = 0 WHERE collection_id = ? AND owner_address = ? AND approval_id = ?')
+      .run(c.collectionId, c.intent.owner_address, c.intent.approval_id);
     try {
       for (const f of await searchHistoricalFills(c.collectionId, 30)) recordFill(f);
     } catch (e) {
