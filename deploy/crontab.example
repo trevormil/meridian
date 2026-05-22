@@ -9,12 +9,16 @@
 # Logs go to /var/log/meridian/*.log (create the dir + chown it to your user):
 #   sudo mkdir -p /var/log/meridian && sudo chown $USER /var/log/meridian
 
+# NOTE: `cd` into the deploy/ dir — that's where docker-compose.yml lives.
+# Running `docker compose` from the repo root fails with
+# "no configuration file provided: not found".
+
 # 8:00 AM ET Mon-Fri — read prev close, generate strikes, create markets
-0  8  * * 1-5  cd /opt/bitbadges-pm && docker compose exec -T aggregator bun run meridian:morning >> /var/log/meridian/morning.log 2>&1
+0  8  * * 1-5  cd /opt/bitbadges-pm/deploy && docker compose exec -T aggregator bun run meridian:morning >> /var/log/meridian/morning.log 2>&1
 
 # 4:05 PM ET Mon-Fri — read close, cast settle vote on every unsettled market
-5  16 * * 1-5  cd /opt/bitbadges-pm && docker compose exec -T aggregator bun run meridian:evening >> /var/log/meridian/evening.log 2>&1
+5  16 * * 1-5  cd /opt/bitbadges-pm/deploy && docker compose exec -T aggregator bun run meridian:evening >> /var/log/meridian/evening.log 2>&1
 
 # Once a week — re-bootstrap the oracle gas wallet in case it's drained
 # (no-op when balance is still healthy).
-0  3  * * 1    cd /opt/bitbadges-pm && docker compose exec -T aggregator bun run meridian:bootstrap >> /var/log/meridian/bootstrap.log 2>&1
+0  3  * * 1    cd /opt/bitbadges-pm/deploy && docker compose exec -T aggregator bun run meridian:bootstrap >> /var/log/meridian/bootstrap.log 2>&1
