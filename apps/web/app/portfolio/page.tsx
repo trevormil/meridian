@@ -106,11 +106,17 @@ function OpenOrderRow({ intent: i }: { intent: IntentDto }) {
  * noise). Always reads the latest yesPrice off the realtime market so the
  * portfolio is mark-to-market live as quotes move.
  */
+function positionValue(p: Position): number {
+  return (
+    (Number(p.yes) * p.market.yesPrice + Number(p.no) * p.market.noPrice) /
+    10 ** env.usdcDecimals
+  );
+}
+
 function PositionRow({ position }: { position: Position }) {
   const m = position.market;
   const parsed = parseMarketRow(m.name);
-  const totalValue = (Number(position.yes) * m.yesPrice + Number(position.no) * m.noPrice) /
-    10 ** env.usdcDecimals;
+  const totalValue = positionValue(position);
   const yesTok = formatBaseUnits(position.yes, env.usdcDecimals);
   const noTok = formatBaseUnits(position.no, env.usdcDecimals);
 
@@ -195,6 +201,7 @@ export default function PortfolioPage() {
   const [positions, setPositions] = useState<Position[]>([]);
   const [usdc, setUsdc] = useState<bigint>(0n);
   const [loading, setLoading] = useState(false);
+  const [orderTab, setOrderTab] = useState<'open' | 'filled'>('open');
 
   // Realtime: any change to ANY of this user's intents on any market is pushed
   // to us. Positions + bank balance are still chain-side and refetched on tx
@@ -278,7 +285,17 @@ export default function PortfolioPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Positions · {positions.length}</CardTitle>
+          <div className="flex items-baseline justify-between gap-4">
+            <CardTitle>Positions · {positions.length}</CardTitle>
+            {positions.length > 0 && (
+              <span className="whitespace-nowrap font-mono text-sm font-semibold text-gold-bright">
+                {positions.reduce((sum, p) => sum + positionValue(p), 0).toFixed(2)}{' '}
+                <span className="text-[10px] uppercase tracking-[0.14em] text-muted">
+                  {env.usdcSymbol}
+                </span>
+              </span>
+            )}
+          </div>
         </CardHeader>
         {loading && (
           <div className="space-y-2">
@@ -302,16 +319,41 @@ export default function PortfolioPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Open orders ({intents.filter((i) => i.isActive).length})</CardTitle>
+          <div className="flex items-center justify-between gap-4">
+            <CardTitle>Open orders</CardTitle>
+            <div className="flex rounded-lg border border-border bg-bg/40 p-0.5 text-xs font-semibold">
+              {(['open', 'filled'] as const).map((tab) => {
+                const count = intents.filter((i) => (tab === 'filled' ? i.used : !i.used)).length;
+                return (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setOrderTab(tab)}
+                    className={`rounded-md px-3 py-1 uppercase tracking-[0.12em] transition-colors ${
+                      orderTab === tab ? 'bg-panel-2 text-ink' : 'text-muted hover:text-ink'
+                    }`}
+                  >
+                    {tab} ({count})
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </CardHeader>
-        {intents.length === 0 && <p className="text-sm text-muted">You haven't placed any orders.</p>}
-        {intents.length > 0 && (
-          <ul className="space-y-2">
-            {intents.map((i) => (
-              <OpenOrderRow key={`${i.collectionId}:${i.approvalLevel}:${i.approvalId}`} intent={i} />
-            ))}
-          </ul>
-        )}
+        {(() => {
+          const shown = intents.filter((i) => (orderTab === 'filled' ? i.used : !i.used));
+          if (intents.length === 0)
+            return <p className="text-sm text-muted">You haven't placed any orders.</p>;
+          if (shown.length === 0)
+            return <p className="text-sm text-muted">No {orderTab} orders.</p>;
+          return (
+            <ul className="space-y-2">
+              {shown.map((i) => (
+                <OpenOrderRow key={`${i.collectionId}:${i.approvalLevel}:${i.approvalId}`} intent={i} />
+              ))}
+            </ul>
+          );
+        })()}
       </Card>
     </div>
   );
