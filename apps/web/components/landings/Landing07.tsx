@@ -65,7 +65,7 @@ function easternMin(): number {
 export function Landing07() {
   const markets = useRealtime<MarketDto[]>(ch.markets) ?? [];
   const active = markets.filter((m) => m.status === 'active');
-  const featured = diversifyByTicker(active, 6);
+  const featured = diversifyByTicker(active, 7);
   const min = easternMin();
   const currentStep = STEPS.reduce((acc, s, i) => (min >= s.minute ? i : acc), -1);
 
