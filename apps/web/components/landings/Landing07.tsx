@@ -3,6 +3,7 @@
 import { useRealtime } from '@/lib/useRealtime';
 import { ch } from '@/lib/realtime';
 import type { MarketDto } from '@/lib/aggregator';
+import { parseMarketName } from '@/lib/market-name';
 import { useCloseCountdown, BrowseCta } from './Shared';
 import { MarketCard } from '@/components/prediction/MarketCard';
 import { clsx } from 'clsx';
@@ -20,6 +21,36 @@ const STEPS = [
   { time: '4:05 PM', label: 'Settle', desc: 'Oracle vote', minute: 16 * 60 + 5 },
 ];
 
+/**
+ * Pick `limit` featured markets that span as many distinct tickers as
+ * possible. Without this the list is dominated by one name (every TSLA
+ * strike lands first), so we round-robin across tickers: one market per
+ * ticker, then a second per ticker, etc. — guaranteeing at least one of
+ * each represented name before any name repeats. Falls back gracefully
+ * for markets whose name doesn't parse to a ticker.
+ */
+function diversifyByTicker(markets: MarketDto[], limit: number): MarketDto[] {
+  const buckets = new Map<string, MarketDto[]>();
+  for (const m of markets) {
+    const key = parseMarketName(m.name, m.description)?.ticker ?? m.collectionId;
+    (buckets.get(key) ?? buckets.set(key, []).get(key)!).push(m);
+  }
+  const queues = [...buckets.values()];
+  const out: MarketDto[] = [];
+  let added = true;
+  while (out.length < limit && added) {
+    added = false;
+    for (const q of queues) {
+      const next = q.shift();
+      if (!next) continue;
+      out.push(next);
+      added = true;
+      if (out.length >= limit) break;
+    }
+  }
+  return out;
+}
+
 function easternMin(): number {
   const fmt = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/New_York',
@@ -34,6 +65,7 @@ function easternMin(): number {
 export function Landing07() {
   const markets = useRealtime<MarketDto[]>(ch.markets) ?? [];
   const active = markets.filter((m) => m.status === 'active');
+  const featured = diversifyByTicker(active, 6);
   const min = easternMin();
   const currentStep = STEPS.reduce((acc, s, i) => (min >= s.minute ? i : acc), -1);
 
@@ -128,7 +160,7 @@ export function Landing07() {
         {/* Full market cards — same component as the browse page (sparkline,
             probability bar, volume), not the condensed tiles. */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {active.slice(0, 6).map((m) => (
+          {featured.map((m) => (
             <MarketCard key={m.collectionId} market={m} />
           ))}
         </div>
