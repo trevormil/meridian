@@ -7,10 +7,14 @@ legal advice.
 
 ## Oracle risk
 
-- **Single price source.** The settlement price for every market is pulled
-  from a single Yahoo Finance unauthenticated endpoint. If Yahoo returns a
-  stale / wrong / null value at 4:05 PM ET, every market for that day
-  settles against that value. There is no consensus or median-of-N feeds.
+- **Median-of-N with guards (residual: correlated vendor failure).** The
+  settlement price is the cross-vendor median of three keyless feeds (Yahoo
+  ×2 hosts + Stooq), with a min-sources guard (won't settle on a lone
+  reading) and a divergence guard (won't settle when sources disagree by
+  >1%). A single stale / wrong / null feed no longer settles the day. The
+  residual risk is *correlated* failure — all three feeds ultimately source
+  from a small number of upstream data vendors, so a shared upstream outage
+  or a market-wide bad print could still pass the divergence check.
 - **Off-chain trust assumption.** The verifier (oracle) account is the
   single signer of every settle vote. A compromise of the oracle's
   mnemonic = ability to settle every market to an arbitrary outcome.
@@ -23,16 +27,21 @@ legal advice.
 
 ## Settlement timing
 
-- **No grace window.** The script settles whenever it runs (cron at
-  4:05 PM ET in the suggested config). If the script is invoked before
-  Yahoo has published the final close, the value used will be a
-  near-close-but-not-final tick. The `isClosed` flag is logged but does
-  NOT block settlement — operators should review.
-- **Holidays / half-days.** The cron is `Mon-Fri` only and does not
-  consult an exchange holiday calendar. On a US market holiday, morning
-  would still create markets that simply never get a real close; evening
-  would settle them against the prior close. Recommended: gate the cron
-  on a holiday calendar (e.g., NYSE schedule API) before V1 ships.
+- **isClosed defer gate.** If the script is invoked before the sources
+  agree the session is closed, the not-closed ticker is **deferred** (left
+  unsettled) rather than settled against a near-close-but-not-final tick.
+  Deferred tickers fall through to the non-zero exit so the next cron run
+  retries them. `MERIDIAN_FORCE_SETTLE=true` overrides for manual operation.
+- **Calendar gate (residual: annual table update, fails open).** Both
+  scripts consult an NYSE full-closure calendar (`calendar.ts`) and no-op on
+  holidays / weekends, so morning no longer creates markets that never close
+  and evening no longer settles against a stale prior close. The residual
+  risk is operational: the holiday table is hardcoded per year and must be
+  extended annually. It **fails open** — an uncovered year is treated as
+  always-trading (with a logged warning) so a missed update degrades to
+  "runs on a holiday" (visible) rather than silently halting the product.
+  Half-days are normal trading days (the 4:05pm settle runs after the 1pm
+  early close).
 - **Time-zone correctness.** All scheduling uses `America/New_York` via
   `Intl.DateTimeFormat`. Servers running in any TZ will produce the
   correct calendar day, but operators must ensure cron itself runs at the

@@ -57,10 +57,13 @@ bun run meridian:evening     # 4:05 PM ET cron — settles via oracle vote
 `bitbadgeschain/config.yml`). Mnemonic in `apps/aggregator/fixtures/oracle.json`
 (gitignored). Designated verifier on every Meridian market.
 
-**Price source**: Yahoo Finance unauthenticated chart endpoint
-`https://query1.finance.yahoo.com/v8/finance/chart/{SYMBOL}` — free, no API
-key, public historical+current closes. Production would swap to Polygon /
-Alpha Vantage / IEX with a paid key.
+**Price source**: median-of-N across three keyless public feeds — Yahoo
+`query1` + `query2` chart endpoints (different hosts for transport redundancy)
+and Stooq's quote CSV. The payout-critical close is the cross-vendor median of
+the survivors, guarded by a min-sources check (default 2) and a divergence
+check (default 1%, throws on disagreement). `aggregateQuotes()` in `prices.ts`
+is a pure, unit-tested function. Production would add Polygon / Alpha Vantage /
+IEX (paid keys) as further sources.
 
 **Cron** (US/Eastern):
 ```
