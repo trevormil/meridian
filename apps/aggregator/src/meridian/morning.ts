@@ -26,7 +26,7 @@ import { calculateStrikes } from './strikes.js';
 import { fetchAllQuotes } from './prices.js';
 import { getOracleSigner, oracleBroadcast } from './signer.js';
 import { ensureMeridianTables, findMarketByStrike, insertMeridianMarket, easternTradingDay } from './db.js';
-import { assertTradingDay } from './trading-calendar.js';
+import { isTradingDay } from './calendar.js';
 import { env } from '../env.js';
 
 interface MarketSpec {
@@ -117,9 +117,10 @@ async function createOne(signer: { client: BitBadgesSigningClient; address: stri
 async function main(): Promise<void> {
   ensureMeridianTables();
   const closeDate = easternTradingDay();
-  // Skip on NYSE holidays (cron already excludes weekends). Set
-  // MERIDIAN_FORCE=1 to override — useful for demos on a closed day.
-  if (!process.env.MERIDIAN_FORCE && !assertTradingDay(closeDate, 'meridian:morning')) {
+  // Skip on NYSE holidays / weekends — a clean no-op so cron stays quiet on
+  // closed days. Set MERIDIAN_FORCE=1 to override (useful for demos).
+  if (!process.env.MERIDIAN_FORCE && !isTradingDay(closeDate)) {
+    console.log(`[meridian:morning] ${closeDate} is not an NYSE trading day — skipping (no-op).`);
     return;
   }
   console.log(`[meridian:morning] run for trading day ${closeDate}`);

@@ -75,30 +75,52 @@ scans every market's intents for three patterns:
 
 This is what makes the book "feel" like a CLOB end-to-end.
 
-## Oracle: off-chain Yahoo + on-chain vote, not Pyth
+## Oracle: median-of-N off-chain feeds + on-chain vote, not Pyth
 
 The spec describes an on-chain oracle the settle transaction reads.
-We use **off-chain Yahoo Finance fetched by the verifier, then posted
-as an on-chain `MsgCastVote`.** Why:
+We use **median-of-N off-chain price feeds fetched by the verifier, then
+posted as an on-chain `MsgCastVote`.** Why:
 
 - **The chain's settle path is vote-based, not data-feed-based.**
   Whoever holds the verifier key signs a yes/no vote. The vote is
   what's read by the redeem path — the chain doesn't know stock prices
   natively.
-- **Yahoo Finance is good enough for V1.** Free, no key, ~5 s p99
-  latency, public methodology. The official close print is on a 15-30 s
-  publication lag, well within our 4:05 PM (vs 4:00 PM close) buffer.
-- **Audit trail.** The verifier's signed vote tx is on-chain forever
-  and references the close it observed in the script log. Anyone can
-  reproduce the Yahoo lookup for a given date and cross-check.
+- **Median-of-3, keyless.** `prices.ts` fetches three keyless public
+  feeds in parallel — Yahoo `query1`, Yahoo `query2` (different host for
+  transport redundancy), and Stooq's quote CSV — and the payout-critical
+  close is the **cross-vendor median** of the survivors. This tolerates
+  one bad/stale/null reading instead of settling every market against it.
+- **Guards (`aggregateQuotes`, pure + unit-tested).**
+  - *Min-sources*: refuse to settle if fewer than `MERIDIAN_PRICE_MIN_SOURCES`
+    (default 2) responded — a lone reading can't be cross-checked.
+  - *Divergence*: if `(max-min)/median` of the closes exceeds
+    `MERIDIAN_PRICE_DIVERGENCE_PCT` (default 1%), throw with per-source
+    detail rather than settle on disagreeing vendors.
+  - *isClosed gate*: the settle quote is `isClosed` only if **every**
+    source agrees the session is closed; the evening script DEFERS a
+    not-closed ticker (see daily-lifecycle) instead of locking in a
+    mid-session tick.
+  `previousClose` is Yahoo-redundant (Stooq's quote endpoint omits it),
+  so it medians only the sources that carry it.
+- **Audit trail.** The verifier's signed vote tx is on-chain forever, and
+  the evening script logs each settle's per-source readings + divergence%.
+  Anyone can reproduce the lookups for a given date and cross-check.
+
+**Multi-verifier (production path).** The tokenization module supports
+k-of-n verifier voting natively via `votingChallenges[]` — that's a
+configuration change, not new protocol code. Single-signer is retained
+for the demo (one oracle key casts the vote); a production deployment
+would seed multiple verifier addresses and a vote threshold so no single
+key can settle a market alone.
 
 **Trade-offs flagged in `RISKS.md`:**
-- Single source (no median-of-N feeds)
-- Single signer (verifier-key compromise = arbitrary settlements)
+- Residual correlated-vendor failure (all feeds share upstream data)
+- Single signer for the demo (verifier-key compromise = arbitrary
+  settlements until multi-verifier voting is enabled)
 - "At or above" rounding sensitivity to a $0.01 close vs strike
 
-Production swap path: replace `prices.ts` with a Polygon / Alpha
-Vantage / IEX backend (paid keys, signed feeds). The script's
+Production swap path: add a Polygon / Alpha Vantage / IEX backend (paid
+keys, signed feeds) as additional sources in `prices.ts`. The script's
 oracle-signer logic stays unchanged.
 
 ## Aggregator: thin sidecar, not a full indexer
@@ -178,8 +200,17 @@ it's created.
 `apps/aggregator/src/meridian/morning.ts` + `evening.ts` are plain
 TypeScript files that:
 - Read fixtures + env once
+- **Gate on the trading calendar** — both compute `easternTradingDay()`
+  and no-op cleanly if `!isTradingDay(closeDate)` (`calendar.ts`). The
+  calendar **fails open** for years with no hardcoded table: a missed
+  annual update degrades to "runs on a holiday" (visible) rather than
+  silently halting the product. Half-days stay normal trading days (the
+  4:05pm settle runs after the 1pm early close).
 - Walk every (ticker, strike) for today
 - Skip rows already present in the `meridian_markets` sidecar table
+- **Defer not-closed tickers** — evening leaves any ticker whose median
+  quote is `!isClosed` unsettled (unless `MERIDIAN_FORCE_SETTLE=true`), so
+  it falls through to the non-zero exit and the next cron run retries it
 - Exit non-zero on any failure (so cron retries can be wired in)
 
 **Why a sidecar table** (`meridian_markets`, separate from `markets`)?

@@ -21,7 +21,7 @@ import { MAG7, type Ticker } from './constants.js';
 import { fetchPriceQuote } from './prices.js';
 import { getOracleSigner, oracleBroadcast } from './signer.js';
 import { ensureMeridianTables, listUnsettledForDate, markSettled, easternTradingDay } from './db.js';
-import { assertTradingDay } from './trading-calendar.js';
+import { isTradingDay } from './calendar.js';
 
 /** Read the cached collection JSON for `collectionId` from the aggregator DB. */
 function loadCollectionJson(collectionId: string): any | null {
@@ -141,13 +141,15 @@ async function main(): Promise<void> {
   // correct for the latest still-unsettled trading day (you can't fetch an
   // arbitrary historical close through this endpoint).
   const closeDate = process.env.MERIDIAN_CLOSE_DATE || easternTradingDay();
-  // Skip on NYSE holidays unless an explicit close-date override is set (a
-  // manual re-settle of a missed day) or MERIDIAN_FORCE=1.
+  // Skip on NYSE holidays / weekends (clean no-op) unless an explicit
+  // close-date override is set (a manual re-settle of a missed day) or
+  // MERIDIAN_FORCE=1.
   if (
     !process.env.MERIDIAN_CLOSE_DATE &&
     !process.env.MERIDIAN_FORCE &&
-    !assertTradingDay(closeDate, 'meridian:evening')
+    !isTradingDay(closeDate)
   ) {
+    console.log(`[meridian:evening] ${closeDate} is not an NYSE trading day — skipping (no-op).`);
     return;
   }
   console.log(`[meridian:evening] run for trading day ${closeDate}`);
@@ -162,15 +164,27 @@ async function main(): Promise<void> {
   const tickers = [...new Set(unsettled.map((u) => u.ticker as Ticker))];
   console.log(`[meridian:evening] settling ${unsettled.length} markets across ${tickers.length} tickers`);
   const closes = new Map<Ticker, number>();
+  const forceSettle = process.env.MERIDIAN_FORCE_SETTLE === 'true';
   for (const t of tickers) {
     try {
       const q = await fetchPriceQuote(t);
-      closes.set(t, q.close);
-      console.log(`[meridian:evening] ${t} close $${q.close.toFixed(2)} (closed=${q.isClosed})`);
-      if (!q.isClosed) {
+      const readings = q.sources.map((s) => `${s.name}=$${s.close.toFixed(2)}`).join(', ');
+      // Defer settlement when the session isn't closed across all sources —
+      // settling against a mid-session tick would lock in a non-final price.
+      // Deferred tickers leave their rows unsettled, which falls through to the
+      // failed-count → non-zero exit so cron retries catch them.
+      if (!q.isClosed && !forceSettle) {
         console.warn(
-          `[meridian:evening] ${t}: regularMarketTime suggests session is still live — settling against latest tick anyway`,
+          `[meridian:evening] ${t}: session not closed across sources — DEFERRING (set MERIDIAN_FORCE_SETTLE=true to override). [${readings}]`,
         );
+        continue;
+      }
+      closes.set(t, q.close);
+      console.log(
+        `[meridian:evening] ${t} median close $${q.close.toFixed(2)} (closed=${q.isClosed}, divergence=${q.divergence.toFixed(3)}%) [${readings}]`,
+      );
+      if (!q.isClosed) {
+        console.warn(`[meridian:evening] ${t}: settling a NON-closed session because MERIDIAN_FORCE_SETTLE=true`);
       }
     } catch (e) {
       console.error(`[meridian:evening] ${t} price fetch failed:`, (e as Error).message);
