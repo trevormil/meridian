@@ -102,6 +102,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <NavLink href="/markets">Markets</NavLink>
                   <NavLink href="/portfolio">Portfolio</NavLink>
                   <NavLink href="/create">Create</NavLink>
+                  <NavLink href="/how-it-works">How it works</NavLink>
                 </nav>
 
                 {/* Right cluster — testnet badge + connect. min-w-0 lets it
