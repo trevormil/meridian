@@ -31,10 +31,27 @@ import { withBackoff } from './retry.js';
 import { sendAlert } from './alert.js';
 import { env } from '../env.js';
 
-interface MarketSpec {
+export interface MarketSpec {
   ticker: Ticker;
   strike: number;
   closeDate: string;
+}
+
+/**
+ * Pure expansion of fetched quotes into the exact set of markets to create:
+ * one spec per (ticker, unique strike) for the given trading day. Kept separate
+ * from `main` (which does the chain I/O) so the "what gets created" decision is
+ * unit-testable without a chain — the dedup is delegated to `calculateStrikes`,
+ * so low-priced tickers correctly collapse to ~5 strikes instead of 7.
+ */
+export function planMarkets(quotes: PriceQuote[], closeDate: string): MarketSpec[] {
+  const specs: MarketSpec[] = [];
+  for (const q of quotes) {
+    for (const strike of calculateStrikes(q.previousClose)) {
+      specs.push({ ticker: q.symbol, strike, closeDate });
+    }
+  }
+  return specs;
 }
 
 /**
@@ -155,12 +172,10 @@ async function main(): Promise<void> {
     process.exit(2);
   }
 
-  const specs: MarketSpec[] = [];
   for (const q of quotes) {
-    const strikes = calculateStrikes(q.previousClose);
-    console.log(`[meridian:morning] ${q.symbol}: prev close $${q.previousClose.toFixed(2)} → strikes ${strikes.join(', ')}`);
-    for (const k of strikes) specs.push({ ticker: q.symbol, strike: k, closeDate });
+    console.log(`[meridian:morning] ${q.symbol}: prev close $${q.previousClose.toFixed(2)} → strikes ${calculateStrikes(q.previousClose).join(', ')}`);
   }
+  const specs = planMarkets(quotes, closeDate);
 
   const signer = await getOracleSigner();
   let created = 0;
@@ -195,7 +210,12 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((e) => {
-  console.error('[meridian:morning] uncaught:', e);
-  process.exit(2);
-});
+// Only run the cron when invoked as the entrypoint (`bun run morning.ts`).
+// Importing this module (e.g. from the unit suite, to test planMarkets) must
+// NOT fire a real market-creation run.
+if (import.meta.main) {
+  main().catch((e) => {
+    console.error('[meridian:morning] uncaught:', e);
+    process.exit(2);
+  });
+}

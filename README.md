@@ -28,8 +28,9 @@ See **[DEMO.md](./DEMO.md)** for a 5-minute reviewer walkthrough against the liv
 The Meridian spec is open about chain choice — Solana / Anchor is the default
 recommendation, EVM L2s and HyperLiquid are accepted alternatives. **I chose
 [BitBadges](https://bitbadges.io)** for a deliberate reason: it's the chain
-I built and maintain. Its `x/tokenization` module ships a native
-`prediction-market` standard ([spec](https://docs.bitbadges.io/x-tokenization/examples/skills/prediction-market))
+I built and maintain. Its [`x/tokenization`](https://docs.bitbadges.io/token-standard/x-tokenization)
+module ships a native `prediction-market` standard
+([spec](https://docs.bitbadges.io/x-tokenization/examples/skills/prediction-market))
 that gives Meridian, for free:
 
 - **YES/NO complementary tokens** with the $1 invariant baked into protocol code

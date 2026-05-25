@@ -172,14 +172,24 @@ export default function HowItWorksPage() {
           BitBadges is a native on-chain token standard. You mix simple building blocks
           to create any asset: payments, stablecoins, escrow, and markets like this one.
         </p>
-        <a
-          href="https://bitbadges.io"
-          target="_blank"
-          rel="noreferrer"
-          className="mt-7 inline-flex items-center gap-2 rounded-full bg-gold px-6 py-2.5 text-sm font-semibold text-bg shadow-clay-sm transition-transform hover:-translate-y-0.5 active:translate-y-0"
-        >
-          Explore BitBadges →
-        </a>
+        <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+          <a
+            href="https://bitbadges.io"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-full bg-gold px-6 py-2.5 text-sm font-semibold text-bg shadow-clay-sm transition-transform hover:-translate-y-0.5 active:translate-y-0"
+          >
+            Explore BitBadges →
+          </a>
+          <a
+            href="https://docs.bitbadges.io/token-standard/x-tokenization"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-full bg-bg/60 px-6 py-2.5 text-sm font-semibold text-ink shadow-clay-sm ring-1 ring-inset ring-white/10 transition-transform hover:-translate-y-0.5 active:translate-y-0"
+          >
+            Read the token standard →
+          </a>
+        </div>
       </section>
 
       {/* 01 · PREDICTION MARKET */}

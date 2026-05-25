@@ -103,12 +103,24 @@ async function resolveCollection(collectionId: string, timeoutMs = 12_000): Prom
   return await fetchCollectionFromChain(collectionId);
 }
 
+/**
+ * The payout rule, isolated as a pure function: a market resolves YES when the
+ * settlement close is AT OR ABOVE the strike, otherwise NO. This is the single
+ * most consequential decision in the product (it determines who gets paid), so
+ * it lives in one exported place that both `settleOne` and the test suite use —
+ * no second copy of the comparison to drift out of sync with the market name
+ * ("≥ $strike") shown to traders.
+ */
+export function settlementOutcome(close: number, strike: number): 'yes' | 'no' {
+  return close >= strike ? 'yes' : 'no';
+}
+
 async function settleOne(
   signer: { address: string; client: any },
   row: { collection_id: string; ticker: Ticker; strike: number },
   closingPrice: number,
 ): Promise<{ outcome: 'yes' | 'no' } | null> {
-  const outcome: 'yes' | 'no' = closingPrice >= row.strike ? 'yes' : 'no';
+  const outcome = settlementOutcome(closingPrice, row.strike);
   const collection = await resolveCollection(row.collection_id);
   if (!collection) {
     console.error(`[meridian:evening] ${row.ticker} > $${row.strike}: collection #${row.collection_id} not reachable via aggregator or LCD — skip`);
@@ -276,7 +288,12 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((e) => {
-  console.error('[meridian:evening] uncaught:', e);
-  process.exit(2);
-});
+// Only run the cron when invoked as the entrypoint (`bun run evening.ts`).
+// Importing this module (e.g. from the unit suite, to test fetchCloses /
+// settlePass / settlementOutcome) must NOT fire a real settlement run.
+if (import.meta.main) {
+  main().catch((e) => {
+    console.error('[meridian:evening] uncaught:', e);
+    process.exit(2);
+  });
+}
