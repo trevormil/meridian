@@ -23,10 +23,12 @@ import {
 } from 'bitbadges';
 import { MAG7, type Ticker, logoUrl } from './constants.js';
 import { calculateStrikes } from './strikes.js';
-import { fetchAllQuotes } from './prices.js';
+import { fetchAllQuotes, type PriceQuote } from './prices.js';
 import { getOracleSigner, oracleBroadcast } from './signer.js';
 import { ensureMeridianTables, findMarketByStrike, insertMeridianMarket, easternTradingDay } from './db.js';
 import { isTradingDay } from './calendar.js';
+import { withBackoff } from './retry.js';
+import { sendAlert } from './alert.js';
 import { env } from '../env.js';
 
 interface MarketSpec {
@@ -126,9 +128,30 @@ async function main(): Promise<void> {
   console.log(`[meridian:morning] run for trading day ${closeDate}`);
 
   console.log(`[meridian:morning] fetching previous closes for ${MAG7.length} tickers from Yahoo Finance`);
-  const quotes = await fetchAllQuotes(MAG7);
+  // Retry the quote fetch with exponential backoff — a transient Yahoo/Stooq
+  // blip shouldn't lose the whole day's market creation. fetchAllQuotes returns
+  // [] (not a throw) when every source is down, so treat empty as retryable.
+  const quotes = await withBackoff<PriceQuote[]>(
+    async () => {
+      const q = await fetchAllQuotes(MAG7);
+      if (q.length === 0) throw new Error('no quotes returned from any source');
+      return q;
+    },
+    {
+      attempts: Number(process.env.MERIDIAN_MORNING_RETRY_ATTEMPTS ?? 4),
+      baseMs: Number(process.env.MERIDIAN_MORNING_RETRY_BASE_MS ?? 2_000),
+      factor: 2,
+      maxMs: 30_000,
+      onRetry: (e, a, d) =>
+        console.warn(`[meridian:morning] quote fetch attempt ${a} failed (${(e as Error).message}); retrying in ${Math.round(d / 1000)}s`),
+    },
+  ).catch(() => [] as PriceQuote[]);
   if (quotes.length === 0) {
-    console.error('[meridian:morning] no quotes returned — aborting');
+    console.error('[meridian:morning] no quotes after retries — aborting');
+    await sendAlert(
+      `Meridian morning: no market data (${closeDate})`,
+      `fetchAllQuotes returned no usable quotes for any MAG7 ticker after retries. No markets were created for ${closeDate}. Check Yahoo/Stooq reachability and re-run meridian:morning.`,
+    );
     process.exit(2);
   }
 
@@ -142,17 +165,17 @@ async function main(): Promise<void> {
   const signer = await getOracleSigner();
   let created = 0;
   let skipped = 0;
-  let failed = 0;
+  const failedSpecs: MarketSpec[] = [];
   for (const spec of specs) {
     try {
       const before = findMarketByStrike(spec.ticker, spec.strike, spec.closeDate);
       const id = await createOne(signer, spec);
       if (id && !before) created++;
       else if (id && before) skipped++;
-      else failed++;
+      else failedSpecs.push(spec);
     } catch (e) {
       console.error(`[meridian:morning] FAIL ${marketName(spec)}:`, (e as Error).message);
-      failed++;
+      failedSpecs.push(spec);
     }
     // Stagger txs a bit so the chain mempool isn't slammed with 49 heavy
     // MsgUniversalUpdateCollection in the same block.
@@ -160,9 +183,16 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    `[meridian:morning] done: ${created} created, ${skipped} already-existed, ${failed} failed (of ${specs.length} planned)`,
+    `[meridian:morning] done: ${created} created, ${skipped} already-existed, ${failedSpecs.length} failed (of ${specs.length} planned)`,
   );
-  if (failed > 0) process.exit(1);
+  if (failedSpecs.length > 0) {
+    const lines = failedSpecs.map((s) => `• ${s.ticker} ≥ $${s.strike}`).join('\n');
+    await sendAlert(
+      `Meridian morning: ${failedSpecs.length} markets failed to create (${closeDate})`,
+      `These strikes were not created and will be retried on the next morning run (idempotent):\n${lines}`,
+    );
+    process.exit(1);
+  }
 }
 
 main().catch((e) => {
