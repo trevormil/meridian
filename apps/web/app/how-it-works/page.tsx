@@ -10,7 +10,7 @@ export const metadata = {
 
 /**
  * Visual, low-prose explainer for a crypto-literate, non-technical reader.
- * (1) prediction-market primer, (2) what BitBadges is — the standard + its
+ * (1) prediction-market primer, (2) what BitBadges is: the standard and its
  * primitive toolbox, (3) the seven approvals that *are* a prediction market,
  * each card tagged with the primitives it composes (SDK
  * core/prediction-markets.ts). Static Server Component; literal identifiers
@@ -87,7 +87,7 @@ const IconCurrency = svg(<><circle cx="12" cy="12" r="9" /><path d="M9 9.5a3 2 0
 
 // ---------- data ----------
 
-// BitBadges building blocks — plain English, no dev terms. The first five
+// BitBadges building blocks (plain English, no dev terms). The first five
 // (used:true) are the ones a Meridian market uses; the rest power other tokens.
 const BLOCKS = [
   { icon: IconCash, label: 'Move USDC', desc: 'send coins with a transfer', used: true },
@@ -114,7 +114,7 @@ const BLOCKS = [
   { icon: IconOne, label: 'One-time use', desc: 'an approval good for a single use' },
 ];
 
-// The same blocks build many kinds of tokens — a market is one recipe.
+// The same blocks build many kinds of tokens; a market is one recipe.
 const RECIPES = [
   { label: 'Subscriptions', icon: IconRefill },
   { label: 'Backed stablecoins', icon: IconCurrency },
@@ -159,15 +159,24 @@ export default function HowItWorksPage() {
             <img src="/chains/bitbadges.png" alt="BitBadges" width={24} height={24} className="h-full w-full object-cover" />
           </span>
           <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-dim">
-            Built on <span className="font-semibold text-gold-bright">BitBadges</span>
+            Powered by <span className="font-semibold text-gold-bright">BitBadges</span>
           </span>
         </a>
         <h1 className="mx-auto mt-6 max-w-3xl font-display text-4xl font-bold leading-[1.05] tracking-marquee sm:text-6xl">
-          A prediction market is <span className="text-gold-gradient">7 approvals.</span>
+          Tokenize <span className="text-gold-gradient">anything.</span>
         </h1>
-        <p className="mx-auto mt-4 max-w-md text-sm text-ink-dim sm:text-base">
-          No custom code. No middleman. Just rules the chain enforces.
+        <p className="mx-auto mt-4 max-w-xl text-sm text-ink-dim sm:text-base">
+          BitBadges is a native on-chain token standard. You mix simple building blocks
+          to create any asset: payments, stablecoins, escrow, and markets like this one.
         </p>
+        <a
+          href="https://bitbadges.io"
+          target="_blank"
+          rel="noreferrer"
+          className="mt-7 inline-flex items-center gap-2 rounded-full bg-gold px-6 py-2.5 text-sm font-semibold text-bg shadow-clay-sm transition-transform hover:-translate-y-0.5 active:translate-y-0"
+        >
+          Explore BitBadges →
+        </a>
       </section>
 
       {/* 01 · PREDICTION MARKET */}
@@ -190,12 +199,12 @@ export default function HowItWorksPage() {
         </Card>
       </Slide>
 
-      {/* 02 · WHAT IS BITBADGES — building blocks → anything */}
+      {/* 02 · WHAT IS BITBADGES: building blocks to anything */}
       <Slide n="02" kicker="The chain" title={<>BitBadges is a native tokenization standard.</>}>
         <p className="-mt-4 mb-7 max-w-2xl text-sm text-ink-dim">
-          On most chains a token is just a balance. BitBadges builds tokenization
-          into the chain itself — a kit of building blocks you mix and match to create
-          almost anything. A market is just one recipe.
+          On most chains, a token is just a balance. BitBadges builds tokenization into
+          the chain itself, giving you a kit of building blocks you mix and match to
+          create almost any asset. A prediction market is one recipe.
         </p>
 
         {/* the block wall */}
@@ -243,8 +252,8 @@ export default function HowItWorksPage() {
         </p>
       </Slide>
 
-      {/* 03 · THE SEVEN APPROVALS — cards with primitives */}
-      <Slide n="03" kicker="The recipe" title={<>A market is seven rules, snapped together.</>}>
+      {/* 03 · THE SEVEN APPROVALS: cards with primitives */}
+      <Slide n="03" kicker="The recipe" title={<>Seven rules make a market.</>}>
         <ol className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
           {APPROVALS.map((a) => {
             const Icon = a.icon;
