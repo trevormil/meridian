@@ -1,0 +1,28 @@
+Do a documentation-accuracy pass on Meridian. Several docs describe an OLD design that the code has since moved past. Treat the CODE as the source of truth — read the actual files, then fix every doc claim that no longer matches. Don't just rename "arbitrage" → "market-maker"; reconcile the described behavior, numbers, and file paths.
+
+## Primary drift: arbitrage bot → demo market-maker
+The arbitrage bot was replaced by a demo market-maker. `apps/aggregator/src/bot/arbitrage.ts` no longer exists — the file is now `apps/aggregator/src/bot/market-maker.ts`. READ that file; the current behavior is:
+- Scans every active market on a 250ms TIMER (not a block subscription — the chain→aggregator WS hangs inside the Docker container, see the comment in the file).
+- Auto-fills any NON-bot order priced in the [0.40, 0.60] band by taking the opposite side instantly: a user BUY → bot mints a YES+NO pair and sells the requested leg; a user SELL → bot buys the token for USDC.
+- NO arbitrage, NO order-crossing, no "three profitable patterns". It's just an always-available fair-priced counterparty inside the band.
+
+Stale references to fix (verify each against the code, these line numbers may drift):
+- ARCHITECTURE.md:23, :62, :70, :165, :175 — "arb bot", "arbitrage bot is the de-facto match engine", "three arb patterns", the whole "## Bots: seeder + arbitrage, always-on" section. Rewrite the bots section to describe the seeder + market-maker as they actually work now.
+- README.md:58 ("an arbitrage bot that cross-matches profitable patterns"), :82 (repo-layout "bot/ seeder, arbitrage").
+- CLAUDE.md:30 (repo-layout "bot/ seeder + arbitrage workers").
+- DEMO.md:38-39 ("The arbitrage bot ... cross-matches profitable patterns"), :111 ("seeder + arb bot"), :129 ("Arb bot patterns: apps/aggregator/src/bot/arbitrage.ts — three..."). Point readers at market-maker.ts and describe the band auto-fill instead.
+
+## Secondary drift: seeder ladder numbers
+The seeder no longer posts "108 intents". READ `apps/aggregator/src/bot/seeder.ts` constants (SELL_PRICES, BUY_PRICES, QUANTITIES) — it now posts asks at 0.65–0.95 and bids at 0.05–0.35 (7 + 7 price points × [1,5,10] quantities), deliberately leaving the 40–60¢ band OPEN for the market-maker to fill. Update every doc that says "108 intents" / "108 limit orders" / "9 prices × 4 directions" (README.md:58, DEMO.md:39/:132, ARCHITECTURE.md order-book section ~:67) to the real ladder.
+ALSO: the header comment block at the top of seeder.ts itself is stale (it still says "[0.55, 0.60, ..., 0.95]", "9 prices", "144 USDC deposit"). Fix that in-code comment to match the actual constants too.
+
+## Tertiary drift (verify + reconcile if stale; don't invent)
+- Dead gamm/pool pricing was ripped out (markets are CLOB / fill-priced). Check CLAUDE.md:233 and any ARCHITECTURE/README mention of gamm or pool pricing; the "pool swap UI" is still legitimately a future item, but remove anything implying gamm pricing exists in the code today.
+- Chart gained a 1m timeframe and is now zoomable/pannable. DEMO.md describes "10m/1h/1d timeframe selector" — reconcile with what the chart component actually offers now.
+- Chain→aggregator WebSocket subscriptions were DISABLED (they socket-stormed and pinned the chain at ~290% CPU); the aggregator now drives off fast timers / block-height polling. The aggregator→FE WebSocket push is unaffected. Check that ARCHITECTURE.md's "Real-time path" / "Aggregator quirks" and README's realtime claims don't overstate live chain-WS usage. Adjust only what's actually wrong.
+
+## Guardrails
+- Source of truth is the code. If a number or mechanism in a doc disagrees with the code, the code wins.
+- Keep edits surgical and in the existing voice/format of each doc. Don't restructure docs or add speculative future-work prose.
+- If ARCHITECTURE_PRES.md or any PDF-source docs exist with the same claims, fix them too, then regenerate the PDFs if there's a script for it.
+- Conventional-commit message (e.g. `docs: sync bot/seeder docs to market-maker design`). No code changes other than the stale seeder.ts header comment.
