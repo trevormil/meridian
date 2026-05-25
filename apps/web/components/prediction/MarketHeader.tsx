@@ -3,6 +3,8 @@ import { ProbabilityBar } from './ProbabilityBar';
 import { CoinDisplay } from '@/components/ui/CoinDisplay';
 import { AddressDisplay } from '@/components/ui/AddressDisplay';
 import { UsdcSymbol } from '@/components/ui/UsdcSymbol';
+import { LcdLink } from '@/components/ui/LcdLink';
+import { lcdCollectionUrl } from '@/lib/chain/lcdLinks';
 import { env } from '@/lib/env';
 import { parseMarketName, formatCloseDate } from '@/lib/market-name';
 import type { MarketDto } from '@/lib/aggregator';
@@ -46,6 +48,9 @@ export function MarketHeader({ market }: Props) {
               {s.label}
             </span>
             <span className="text-[10px] uppercase tracking-wider text-muted">Market #{market.collectionId}</span>
+            <LcdLink href={lcdCollectionUrl(market.collectionId)} title="Inspect this market's on-chain collection (YES/NO tokens, approvals, vault) via the chain LCD">
+              on-chain
+            </LcdLink>
             {closeLabel && (
               <span className="rounded-full border border-gold/30 bg-gold/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold">
                 {closeLabel} close
