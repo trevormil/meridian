@@ -7,6 +7,7 @@ import { tx } from './routes/tx.js';
 import { node } from './routes/node.js';
 import { faucet } from './routes/faucet.js';
 import { uploads } from './routes/uploads.js';
+import { chain } from './routes/chain.js';
 import { bootstrapScan, startBootstrapLoop } from './workers/bootstrap.js';
 import { startPricePoller } from './workers/price-poller.js';
 import { startStatsPoller } from './workers/stats-poller.js';
@@ -31,6 +32,7 @@ app.route('/api/v0', predictions);
 app.route('/api/v0', tx);
 app.route('/api/v0', faucet);
 app.route('/api/v0', uploads);
+app.route('/api/v0', chain);
 app.route('/', node);
 
 app.onError((err, c) => {

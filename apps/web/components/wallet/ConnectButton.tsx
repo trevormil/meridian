@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useWallet } from '@/contexts/WalletContext';
 import { Button } from '@/components/ui/Button';
 import { AddressDisplay } from '@/components/ui/AddressDisplay';
@@ -129,19 +130,20 @@ export function ConnectButton() {
     }
   }
 
+  // Network/wallet label doubles as a dual-wallet hint (EVM vs Cosmos).
+  const kindLabel =
+    w.kind === 'metamask' ? 'MetaMask · EVM' : w.kind === 'keplr' ? 'Keplr · Cosmos' : 'Test wallet';
+
   return (
-    <div className="flex h-8 items-center gap-2" data-testid="wallet-connected">
-      {/* Hidden testid carrying the persona name. Used by the Playwright suite
-          to assert "connected as e2e-alice" without exposing the persona label
-          in the visible pill (the user-facing UI only shows the address). */}
+    <div className="relative" data-testid="wallet-connected">
+      {/* Hidden testid carrying the persona name (Playwright reads it). */}
       <span className="sr-only" data-testid="wallet-name">
         {w.name ?? ''}
       </span>
       <button
         type="button"
-        onClick={copy}
-        title={`Click to copy ${w.ethAddress ?? w.address}`}
-        data-testid="copy-address"
+        onClick={() => setShowMenu((s) => !s)}
+        data-testid="wallet-menu-trigger"
         className="group inline-flex h-8 items-center gap-2 rounded-lg border border-border bg-panel-2 px-2.5 transition-colors hover:border-border-hi"
       >
         <WalletLogo kind={w.kind} size={16} className="shrink-0 align-middle" />
@@ -154,33 +156,58 @@ export function ConnectButton() {
             className="text-ink"
           />
         </span>
-        <span
-          className={`inline-flex w-3.5 items-center justify-center ${copied ? 'text-yes' : 'text-muted group-hover:text-ink'}`}
-          aria-live="polite"
+        <svg
+          className={`h-3 w-3 shrink-0 text-muted transition-transform group-hover:text-ink ${showMenu ? 'rotate-180' : ''}`}
+          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
         >
-          {copied ? (
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          ) : (
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="9" y="9" width="11" height="11" rx="2" />
-              <path d="M5 15V5a2 2 0 0 1 2-2h10" />
-            </svg>
-          )}
-        </span>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
       </button>
-      {/* Disconnect is hidden on mobile to keep the header from overflowing —
-          tap the address pill to copy; full disconnect lives on ≥ sm. */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={w.disconnect}
-        data-testid="disconnect"
-        className="hidden sm:inline-flex"
-      >
-        Disconnect
-      </Button>
+      {showMenu && (
+        <div
+          data-testid="wallet-menu-connected"
+          className="absolute right-0 top-full z-50 mt-1 w-52 rounded-lg border border-border bg-panel-2 p-1.5 shadow-lift"
+        >
+          <div className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-faint">
+            {kindLabel}
+          </div>
+          <button
+            type="button"
+            onClick={copy}
+            data-testid="copy-address"
+            className="flex w-full items-center justify-between rounded px-2.5 py-1.5 text-left text-sm text-ink transition-colors hover:bg-border"
+          >
+            <span>Copy address</span>
+            {copied && <span className="text-xs text-yes">Copied</span>}
+          </button>
+          <Link
+            href="/portfolio"
+            onClick={() => setShowMenu(false)}
+            className="block rounded px-2.5 py-1.5 text-sm text-ink transition-colors hover:bg-border"
+          >
+            Portfolio
+          </Link>
+          <Link
+            href="/explorer"
+            onClick={() => setShowMenu(false)}
+            className="block rounded px-2.5 py-1.5 text-sm text-ink transition-colors hover:bg-border"
+          >
+            Explorer
+          </Link>
+          <div className="my-1 h-px bg-border" />
+          <button
+            type="button"
+            onClick={() => {
+              setShowMenu(false);
+              w.disconnect();
+            }}
+            data-testid="disconnect"
+            className="block w-full rounded px-2.5 py-1.5 text-left text-sm text-no transition-colors hover:bg-no/10"
+          >
+            Disconnect
+          </button>
+        </div>
+      )}
     </div>
   );
 }

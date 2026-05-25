@@ -16,6 +16,7 @@ const TABS = [
   { href: '/markets', label: 'Markets', icon: ChartIcon },
   { href: '/portfolio', label: 'Portfolio', icon: WalletIcon },
   { href: '/create', label: 'Create', icon: PlusIcon },
+  { href: '/explorer', label: 'Explorer', icon: BlocksIcon },
   { href: '/how-it-works', label: 'Guide', icon: HelpIcon },
 ];
 
@@ -81,6 +82,16 @@ function PlusIcon({ className }: { className?: string }) {
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="9" />
       <path d="M12 8v8M8 12h8" />
+    </svg>
+  );
+}
+
+function BlocksIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="5" rx="1" />
+      <rect x="3" y="10.5" width="18" height="5" rx="1" />
+      <rect x="3" y="17" width="11" height="3" rx="1" />
     </svg>
   );
 }
