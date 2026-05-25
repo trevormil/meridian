@@ -135,7 +135,10 @@ chain.get('/chain/logs', async (c) => {
     const size = f.size;
     const start = Math.max(0, size - 96 * 1024);
     const text = await f.slice(start).text();
-    const lines = text.split('\n').filter((l) => l.length > 0);
+    // The node logs in color; journalctl -o cat preserves the ANSI escapes.
+    // Strip them so the browser renders clean text (the FE re-colors by level).
+    const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, '');
+    const lines = text.split('\n').filter((l) => l.length > 0).map(stripAnsi);
     return c.json({ mounted: true, lines: lines.slice(-tail) });
   } catch (e) {
     return c.json({ mounted: false, lines: [], error: (e as Error).message });
