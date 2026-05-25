@@ -54,6 +54,11 @@ export function CliTerminal() {
             <Slash>/plugin install bitbadges</Slash>
           </div>
           <div className="space-y-0.5">
+            <Cmt>Create a wallet key to sign with</Cmt>
+            <Cmd>{bb} keys add mywallet</Cmd>
+            <Cmd>{bb} keys list</Cmd>
+          </div>
+          <div className="space-y-0.5">
             <Cmt>Create a market — seven approvals, one command</Cmt>
             <Cmd>{bb} build prediction-market --verifier bb1resolver…xyz --denom USDC | {bb} deploy</Cmd>
           </div>
