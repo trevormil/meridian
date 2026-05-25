@@ -13,7 +13,8 @@
     "wipe": "cd apps/aggregator && bun run wipe",
     "reset-cursor": "cd apps/aggregator && bun run reset-cursor",
     "build": "bun run --filter '*' build",
-    "typecheck": "bun run --filter '*' typecheck"
+    "typecheck": "bun run --filter '*' typecheck",
+    "test": "cd apps/aggregator && bun run test:unit"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

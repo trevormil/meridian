@@ -12,7 +12,13 @@
  *   MERIDIAN_PRICE_OVERRIDE  — JSON map of {SYMBOL: {close, previousClose}}
  *                              that bypasses the Yahoo fetch
  *
- *   bun test test/meridian/e2e.spec.ts
+ * REQUIRES live infrastructure: the dev aggregator on :4001, a local
+ * BitBadges chain, and the oracle key fixture at `fixtures/oracle.json`.
+ * It is therefore SKIPPED by default and only runs when you opt in:
+ *
+ *   RUN_MERIDIAN_E2E=1 bun test test/meridian/e2e.spec.ts
+ *
+ * Without the flag the bare unit suite stays green in CI / a fresh checkout.
  */
 import { test, expect, beforeAll, afterAll } from 'bun:test';
 import { spawnSync } from 'node:child_process';
@@ -21,6 +27,11 @@ import { getDb } from '../../src/db/index.js';
 import { ensureMeridianTables, type MeridianRow } from '../../src/meridian/db.js';
 import { calculateStrikes } from '../../src/meridian/strikes.js';
 import { MAG7 } from '../../src/meridian/constants.js';
+
+// Opt-in gate: this tier shells out to morning.ts/evening.ts which need a live
+// chain, the dev aggregator on :4001, and fixtures/oracle.json. Skipped unless
+// the operator explicitly asks for it, so a bare `bun test` stays green.
+const RUN_E2E = process.env.RUN_MERIDIAN_E2E === '1';
 
 const CLOSE_DATE = '2099-12-31';
 
@@ -83,17 +94,19 @@ function dbRows(): MeridianRow[] {
 }
 
 beforeAll(() => {
+  if (!RUN_E2E) return;
   ensureMeridianTables();
   // Clean slate for this sentinel date so re-runs are deterministic.
   getDb().prepare('DELETE FROM meridian_markets WHERE close_date = ?').run(CLOSE_DATE);
 });
 
 afterAll(() => {
+  if (!RUN_E2E) return;
   // Cleanup so the test doesn't leave 2099-12-31 ghost rows behind.
   getDb().prepare('DELETE FROM meridian_markets WHERE close_date = ?').run(CLOSE_DATE);
 });
 
-test('morning creates one market per (ticker, strike); idempotent on re-run', () => {
+test.skipIf(!RUN_E2E)('morning creates one market per (ticker, strike); idempotent on re-run', () => {
   // First run does the work. Cron pattern in production is "run once" but
   // the script is idempotent — a second invocation fills any markets the
   // first run dropped due to transient chain noise (mempool sequence collisions
@@ -119,7 +132,7 @@ test('morning creates one market per (ticker, strike); idempotent on re-run', ()
   expect(out2).toContain('already-existed');
 }, 600_000);
 
-test('evening settles every market; outcome = (close ≥ strike); idempotent', () => {
+test.skipIf(!RUN_E2E)('evening settles every market; outcome = (close ≥ strike); idempotent', () => {
   const before = dbRows();
   expect(before.length).toBeGreaterThan(0);
   expect(before.every((r) => !r.settled)).toBe(true);

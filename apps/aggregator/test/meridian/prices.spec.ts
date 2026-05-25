@@ -93,6 +93,55 @@ test('aggregateQuotes is closed only when every source agrees', () => {
   expect(oneOpen.isClosed).toBe(false);
 });
 
+test('aggregateQuotes accepts divergence exactly AT the limit (boundary is inclusive)', () => {
+  // 1% limit, median 100.5 → a 100/101 spread is ≈0.995% and must NOT throw.
+  const q = aggregateQuotes('META', [src('yahoo-q1', 100, 99), src('yahoo-q2', 101, 99.5)], {
+    divergencePct: 1,
+  });
+  expect(q.divergence).toBeLessThanOrEqual(1);
+});
+
+test('aggregateQuotes throws when no source carries a previousClose', () => {
+  // Two Stooq-style readings: close present, previousClose null on both.
+  expect(() =>
+    aggregateQuotes('META', [src('stooq', 200, null), src('stooq2', 200.5, null)]),
+  ).toThrow(/no source carried a previousClose/);
+});
+
+test('aggregateQuotes honors custom minSources / divergencePct options', () => {
+  // minSources:3 → two responders is not enough to cross-check.
+  expect(() =>
+    aggregateQuotes('META', [src('a', 100, 99), src('b', 100.5, 99)], { minSources: 3 }),
+  ).toThrow(/need ≥3/);
+  // A tighter 0.1% divergence limit rejects a spread the default 1% would allow.
+  expect(() =>
+    aggregateQuotes('META', [src('a', 100, 99), src('b', 100.5, 99)], { divergencePct: 0.1 }),
+  ).toThrow(/divergence/);
+});
+
+test('aggregateQuotes reports the freshest timestamp across sources', () => {
+  const q = aggregateQuotes('META', [
+    { name: 'a', close: 100, previousClose: 99, timestamp: 1_700_000_000, isClosed: true },
+    { name: 'b', close: 100.5, previousClose: 99, timestamp: 1_700_009_999, isClosed: true },
+  ]);
+  expect(q.timestamp).toBe(1_700_009_999);
+});
+
+test('MERIDIAN_PRICE_OVERRIDE honors isClosed:false (forces a non-closed reading through)', async () => {
+  const prevOverride = process.env.MERIDIAN_PRICE_OVERRIDE;
+  process.env.MERIDIAN_PRICE_OVERRIDE = JSON.stringify({
+    META: { close: 500, previousClose: 490, isClosed: false },
+  });
+  try {
+    const q = await fetchPriceQuote('META');
+    expect(q.close).toBe(500);
+    expect(q.isClosed).toBe(false); // evening.ts will DEFER this unless force-settle
+  } finally {
+    if (prevOverride === undefined) delete process.env.MERIDIAN_PRICE_OVERRIDE;
+    else process.env.MERIDIAN_PRICE_OVERRIDE = prevOverride;
+  }
+});
+
 test('MERIDIAN_PRICE_OVERRIDE bypasses Yahoo', async () => {
   const prevOverride = process.env.MERIDIAN_PRICE_OVERRIDE;
   process.env.MERIDIAN_PRICE_OVERRIDE = JSON.stringify({

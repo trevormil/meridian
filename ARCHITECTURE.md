@@ -12,8 +12,9 @@ Trade-offs:
 
 **Why BitBadges**
 - **The primitive already exists.** BitBadges ships a native
-  `prediction-market` standard inside its `tokenization` module —
-  YES/NO complementary tokens, $1.00 redemption invariant, verifier
+  `prediction-market` standard inside its
+  [`x/tokenization`](https://docs.bitbadges.io/token-standard/x-tokenization)
+  module — YES/NO complementary tokens, $1.00 redemption invariant, verifier
   voting, atomic intent-based order book. Building Meridian on Solana
   would have meant writing the same primitive from scratch in Anchor
   (≈2-3 weeks of work that this repo skips entirely).
