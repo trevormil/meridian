@@ -1,66 +1,44 @@
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { Card } from '@/components/ui/Card';
 
 export const metadata = {
   title: 'How it works · Meridian',
   description:
-    'Meridian is a prediction market that is literally seven on-chain approvals. A quick primer on prediction markets, then the real story: what BitBadges is and how its programmable token standard makes a market out of rules.',
+    'A prediction market on BitBadges is seven on-chain approvals. The token standard, its primitives, and the seven rules that make a market.',
 };
 
 /**
- * Visual, slide-style explainer aimed at a crypto-literate but non-technical
- * reader. Prediction markets get a brief primer; the meat is BitBadges — its
- * programmable token standard, the transferability/approval model, and the
- * seven approvals that *are* a Meridian market (SDK:
- * core/prediction-markets.ts:390). Static Server Component; reuses the app's
- * clay/gold styling. Plain prose; literal field/standard names live in code
- * chips only.
+ * Visual, low-prose explainer for a crypto-literate, non-technical reader.
+ * (1) prediction-market primer, (2) what BitBadges is — the standard + its
+ * primitive toolbox, (3) the seven approvals that *are* a prediction market,
+ * each card tagged with the primitives it composes (SDK
+ * core/prediction-markets.ts). Static Server Component; literal identifiers
+ * live in code chips only.
  */
 
-// ---------- layout primitives ----------
+// ---------- primitives ----------
 
-function Slide({ n, kicker, children }: { n: string; kicker: string; children: ReactNode }) {
+function Slide({ n, kicker, title, children }: { n: string; kicker: string; title: ReactNode; children: ReactNode }) {
   return (
     <section className="scroll-mt-24">
-      <div className="mb-8 flex items-center gap-4">
-        <span className="wordmark-gradient font-hero text-3xl font-extrabold leading-none sm:text-4xl">
-          {n}
-        </span>
+      <div className="mb-6 flex items-center gap-4">
+        <span className="wordmark-gradient font-hero text-2xl font-extrabold leading-none sm:text-3xl">{n}</span>
         <span className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
         <span className="eyebrow">{kicker}</span>
       </div>
-      {children}
+      <h2 className="font-display text-2xl font-bold tracking-marquee text-ink sm:text-3xl">{title}</h2>
+      <div className="mt-8">{children}</div>
     </section>
   );
 }
 
-function Headline({ children }: { children: ReactNode }) {
+function Tag({ children }: { children: ReactNode }) {
   return (
-    <h2 className="max-w-3xl font-display text-3xl font-bold leading-[1.08] tracking-marquee text-ink sm:text-4xl">
+    <span className="rounded-full border border-border bg-bg/50 px-2.5 py-0.5 text-[11px] text-ink-dim">
       {children}
-    </h2>
+    </span>
   );
-}
-
-function Lead({ children }: { children: ReactNode }) {
-  return <p className="mt-4 max-w-2xl text-base leading-relaxed text-ink-dim">{children}</p>;
-}
-
-/** Inline code chip — the only place literal chain identifiers may appear. */
-function Code({ children }: { children: ReactNode }) {
-  return (
-    <code className="rounded border border-border bg-bg/60 px-1.5 py-0.5 font-mono text-[0.8em] text-gold-bright">
-      {children}
-    </code>
-  );
-}
-
-function Yes({ children }: { children: ReactNode }) {
-  return <span className="font-semibold text-yes">{children}</span>;
-}
-function No({ children }: { children: ReactNode }) {
-  return <span className="font-semibold text-no">{children}</span>;
 }
 
 // ---------- icons ----------
@@ -69,363 +47,258 @@ type IconProps = { className?: string };
 const svg = (paths: ReactNode) =>
   function Icon({ className }: IconProps) {
     return (
-      <svg
-        className={className}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
         {paths}
       </svg>
     );
   };
 
-const IconMint = svg(
-  <>
-    <circle cx="12" cy="12" r="9" />
-    <path d="M12 7v10M8.5 9.5a3.5 2 0 0 1 7 0c0 1.1-1.6 1.6-3.5 2s-3.5.9-3.5 2a3.5 2 0 0 0 7 0" />
-  </>,
-);
+const IconMint = svg(<><circle cx="12" cy="12" r="9" /><path d="M12 7v10M9 9.5a3 2 0 0 1 6 0c0 1-1.5 1.5-3 1.9s-3 .9-3 1.9a3 2 0 0 0 6 0" /></>);
 const IconTrade = svg(<path d="M4 8h13l-3-3M20 16H7l3 3" />);
-const IconRedeem = svg(
-  <>
-    <path d="M3 7l9-4 9 4-9 4-9-4Z" />
-    <path d="M3 7v8l9 4 9-4V7M12 11v8" />
-  </>,
-);
-const IconYes = svg(
-  <>
-    <circle cx="12" cy="12" r="9" />
-    <path d="M8 12l3 3 5-6" />
-  </>,
-);
-const IconNo = svg(
-  <>
-    <circle cx="12" cy="12" r="9" />
-    <path d="M9 9l6 6M15 9l-6 6" />
-  </>,
-);
-const IconPush = svg(
-  <>
-    <path d="M3 12h18M3 12l4-4M3 12l4 4M21 12l-4-4M21 12l-4 4" />
-  </>,
-);
-const IconCode = svg(<path d="M8 6 3 12l5 6M16 6l5 6-5 6M13 4l-2 16" />);
-const IconShield = svg(
-  <>
-    <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3Z" />
-    <path d="M9 12l2 2 4-4" />
-  </>,
-);
-const IconLego = svg(
-  <>
-    <rect x="4" y="9" width="16" height="11" rx="1.5" />
-    <path d="M8 9V6.5a1.5 1.5 0 0 1 3 0V9M13 9V6.5a1.5 1.5 0 0 1 3 0V9" />
-  </>,
-);
+const IconRedeem = svg(<><path d="M3 7l9-4 9 4-9 4-9-4Z" /><path d="M3 7v8l9 4 9-4V7" /></>);
+const IconYes = svg(<><circle cx="12" cy="12" r="9" /><path d="M8 12l3 3 5-6" /></>);
+const IconNo = svg(<><circle cx="12" cy="12" r="9" /><path d="M9 9l6 6M15 9l-6 6" /></>);
+const IconPush = svg(<path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4" />);
+
+// block + recipe icons
+const IconCash = svg(<><rect x="2" y="6" width="20" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /><path d="M5 9h.01M19 15h.01" /></>);
+const IconTokens = svg(<><rect x="3" y="13" width="5" height="7" rx="1" /><rect x="9.5" y="9" width="5" height="11" rx="1" /><rect x="16" y="5" width="5" height="15" rx="1" /></>);
+const IconVote = svg(<><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M8 12l3 3 5-6" /></>);
+const IconLimit = svg(<><path d="M5 18a8 8 0 1 1 14 0" /><path d="M12 14l4-3" /></>);
+const IconWho = svg(<><circle cx="9" cy="8" r="3" /><path d="M3 20a6 6 0 0 1 12 0" /><circle cx="18" cy="7" r="2" /></>);
+const IconHoldings = svg(<><path d="M3 8a2 2 0 0 1 2-2h13v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8Z" /><path d="M3 10h17M16 14h.01" /></>);
+const IconBurn = svg(<path d="M12 3c1 3 5 4 5 9a5 5 0 0 1-10 0c0-2 1-3 2-4 .5 2 2 2 2 2 .5-3-1-5 1-7Z" />);
+const IconPool = svg(<><path d="M3 16c2 0 2-2 4.5-2s2.5 2 4.5 2 2-2 4.5-2 2.5 2 4.5 2" /><path d="M3 20c2 0 2-2 4.5-2s2.5 2 4.5 2 2-2 4.5-2 2.5 2 4.5 2" /><path d="M7 11l5-7 5 7" /></>);
+const IconOverTime = svg(<><circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 2" /></>);
+const IconFee = svg(<><path d="M19 5 5 19" /><circle cx="7.5" cy="7.5" r="2.5" /><circle cx="16.5" cy="16.5" r="2.5" /></>);
+const IconHourglass = svg(<><path d="M6 3h12M6 21h12M7 3c0 5 10 5 10 0M7 21c0-5 10-5 10 0" /></>);
+const IconFreeze = svg(<><path d="M12 2v20M3 7l18 10M21 7 3 17M2.5 12h19" /></>);
+const IconList = svg(<><path d="M9 6h11M9 12h11M9 18h11" /><path d="M4 6l1 1 1.5-1.5M4 12l1 1 1.5-1.5M4 18l1 1 1.5-1.5" /></>);
+const IconRefill = svg(<><path d="M20 12a8 8 0 1 1-2.3-5.6" /><path d="M20 3v5h-5" /></>);
+const IconApprovers = svg(<><rect x="3" y="5" width="8" height="6" rx="1" /><rect x="13" y="13" width="8" height="6" rx="1" /><path d="M5 8l1.2 1.2L8 7.5M15 16l1.2 1.2L18 15.5" /></>);
+const IconBond = svg(<><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></>);
+const IconUp = svg(<><path d="M5 4h14" /><path d="M12 20V9M7 13l5-5 5 5" /></>);
+const IconLockClock = svg(<><rect x="3" y="11" width="11" height="9" rx="2" /><path d="M5.5 11V8a3.5 3.5 0 0 1 7 0v3" /><circle cx="18" cy="7" r="4" /><path d="M18 5.5V7l1 1" /></>);
+const IconBox = svg(<><path d="M3 8l9-5 9 5v8l-9 5-9-5V8Z" /><path d="M3 8l9 5 9-5M12 13v8" /></>);
+const IconOne = svg(<><circle cx="12" cy="12" r="9" /><path d="M11 8.5 13 7v10M10 17h5" /></>);
+const IconHours = svg(<><circle cx="12" cy="12" r="8" /><path d="M12 8v4l2.5 1.5M12 2v2M22 12h-2" /></>);
+const IconStar = svg(<path d="M12 3l2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.8L6.6 19.6l1-6L3.3 9.4l6-.9L12 3Z" />);
+const IconCurrency = svg(<><circle cx="12" cy="12" r="9" /><path d="M9 9.5a3 2 0 0 1 6 0c0 1-1.5 1.5-3 1.9s-3 .9-3 1.9a3 2 0 0 0 6 0M12 6v12" /></>);
 
 // ---------- data ----------
 
-// The six fields every transfer is matched against (BitBadges docs:
-// learn/transferability.md "Six Core Fields").
-const DIMENSIONS = [
-  { q: 'Who sends?', plain: 'the from address', chip: 'fromListId' },
-  { q: 'Who receives?', plain: 'the to address', chip: 'toListId' },
-  { q: 'Who triggers it?', plain: 'who initiates', chip: 'initiatedByListId' },
-  { q: 'When?', plain: 'the allowed time window', chip: 'transferTimes' },
-  { q: 'Which token?', plain: 'YES or NO here', chip: 'tokenIds' },
-  { q: 'For which period?', plain: 'the ownership time', chip: 'ownershipTimes' },
+// BitBadges building blocks — plain English, no dev terms. The first five
+// (used:true) are the ones a Meridian market uses; the rest power other tokens.
+const BLOCKS = [
+  { icon: IconCash, label: 'Move USDC', desc: 'send coins with a transfer', used: true },
+  { icon: IconTokens, label: 'Hand out tokens', desc: 'create exact amounts', used: true },
+  { icon: IconVote, label: 'Require a vote', desc: 'gate on an oracle or admin', used: true },
+  { icon: IconLimit, label: 'Set limits', desc: 'cap how much & how often', used: true },
+  { icon: IconWho, label: 'Pick who & when', desc: 'who moves what, and when', used: true },
+  { icon: IconHoldings, label: 'Require holdings', desc: 'only if you own another token' },
+  { icon: IconBurn, label: 'Burn to redeem', desc: 'destroy tokens to claim or exit' },
+  { icon: IconPool, label: 'Liquidity pool', desc: 'built-in pool for trading' },
+  { icon: IconOverTime, label: 'Balances over time', desc: 'grow or shrink on a schedule' },
+  { icon: IconFee, label: 'Charge a fee', desc: 'take a royalty per transfer' },
+  { icon: IconHourglass, label: 'Auto-expire', desc: 'tokens or rules delete themselves' },
+  { icon: IconFreeze, label: 'Freeze & claw back', desc: 'issuer can pause or reclaim' },
+  { icon: IconList, label: 'Allow / block lists', desc: 'on-chain allow or deny lists' },
+  { icon: IconCurrency, label: 'Allowed currencies', desc: 'restrict which coins can pay' },
+  { icon: IconRefill, label: 'Refilling limits', desc: 'daily or monthly, auto-reset' },
+  { icon: IconApprovers, label: 'Multiple approvers', desc: 'multi-signature sign-off' },
+  { icon: IconBond, label: 'Non-transferable', desc: "soulbound, can't be sold" },
+  { icon: IconUp, label: 'Increment-only', desc: 'can only go up, with a cap' },
+  { icon: IconHours, label: 'Restrict hours', desc: 'no transfers outside set times' },
+  { icon: IconLockClock, label: 'Lock until a date', desc: 'vesting-style time locks' },
+  { icon: IconBox, label: 'Capped supply', desc: 'a hard limit on how many exist' },
+  { icon: IconOne, label: 'One-time use', desc: 'an approval good for a single use' },
 ];
 
-// The 7 approvals that ARE a prediction market (SDK prediction-markets.ts:390),
-// grouped onto the market lifecycle.
+// The same blocks build many kinds of tokens — a market is one recipe.
+const RECIPES = [
+  { label: 'Subscriptions', icon: IconRefill },
+  { label: 'Backed stablecoins', icon: IconCurrency },
+  { label: 'Escrow payments', icon: IconBond },
+  { label: 'Loyalty points', icon: IconStar },
+  { label: 'Prediction markets', icon: IconYes },
+];
+
+// The seven approvals (SDK prediction-markets.ts:390) as plain IF → THEN rules.
 const APPROVALS = [
-  {
-    phase: 'Enter',
-    icon: IconMint,
-    tone: 'gold',
-    name: 'Mint',
-    body: 'Pay $1 and the collection creates one matched YES + NO pair for you. The dollar is escrowed by the approval itself.',
-  },
-  {
-    phase: 'Trade',
-    icon: IconTrade,
-    tone: 'gold',
-    name: 'Transferable',
-    body: 'The one approval that lets YES and NO tokens move freely between traders and the liquidity pool. This is what makes a market.',
-  },
-  {
-    phase: 'Exit early',
-    icon: IconRedeem,
-    tone: 'gold',
-    name: 'Redeem',
-    body: 'Hand back a YES + NO pair before settlement and get your $1 back. The two sides always net to a dollar.',
-  },
-  {
-    phase: 'Settle',
-    icon: IconYes,
-    tone: 'yes',
-    name: 'YES wins',
-    body: 'If the stock closed at or above the strike, every YES token redeems for $1 and NO becomes worthless.',
-  },
-  {
-    phase: 'Settle',
-    icon: IconNo,
-    tone: 'no',
-    name: 'NO wins',
-    body: 'If it closed below, the mirror image: every NO token redeems for $1 and YES expires.',
-  },
-  {
-    phase: 'Settle',
-    icon: IconPush,
-    tone: 'muted',
-    name: 'Push YES',
-    body: 'The void path for the YES side — if the market is called off, holders are refunded instead of paid out.',
-  },
-  {
-    phase: 'Settle',
-    icon: IconPush,
-    tone: 'muted',
-    name: 'Push NO',
-    body: 'The matching void path for NO. Together the two pushes mean a no-contest day returns everyone’s dollar.',
-  },
+  { n: 1, icon: IconMint, name: 'Mint', phase: 'Enter', tone: 'gold', cond: 'someone pays 1 USDC', result: 'they get 1 YES + 1 NO', blocks: ['move USDC', 'hand out tokens'] },
+  { n: 2, icon: IconTrade, name: 'Trade', phase: 'Trade', tone: 'gold', cond: 'a buyer & seller agree', result: 'YES / NO tokens change hands', blocks: ['pick who & when'] },
+  { n: 3, icon: IconRedeem, name: 'Redeem', phase: 'Exit', tone: 'gold', cond: 'you hand back 1 YES + 1 NO', result: 'you get 1 USDC back, anytime', blocks: ['move USDC', 'burn the pair'] },
+  { n: 4, icon: IconYes, name: 'YES wins', phase: 'Settle', tone: 'yes', cond: 'the oracle votes YES', result: 'each YES pays 1 USDC · NO expires', blocks: ['require a vote', 'pay out'] },
+  { n: 5, icon: IconNo, name: 'NO wins', phase: 'Settle', tone: 'no', cond: 'the oracle votes NO', result: 'each NO pays 1 USDC · YES expires', blocks: ['require a vote', 'pay out'] },
+  { n: 6, icon: IconPush, name: 'Push YES', phase: 'Settle', tone: 'muted', cond: 'the oracle voids the day', result: 'YES holders are refunded', blocks: ['require a vote', 'refund'] },
+  { n: 7, icon: IconPush, name: 'Push NO', phase: 'Settle', tone: 'muted', cond: 'the oracle voids the day', result: 'NO holders are refunded', blocks: ['require a vote', 'refund'] },
 ];
 
-const TONE_RING: Record<string, string> = {
-  gold: 'text-gold-bright ring-gold/30',
-  yes: 'text-yes ring-yes/30',
-  no: 'text-no ring-no/30',
-  muted: 'text-muted ring-border',
+const TONE: Record<string, { text: string; ring: string; bl: string }> = {
+  gold: { text: 'text-gold-bright', ring: 'ring-gold/30', bl: 'border-l-gold/50' },
+  yes: { text: 'text-yes', ring: 'ring-yes/30', bl: 'border-l-yes/50' },
+  no: { text: 'text-no', ring: 'ring-no/30', bl: 'border-l-no/50' },
+  muted: { text: 'text-muted', ring: 'ring-border', bl: 'border-l-border' },
 };
 
 // ---------- page ----------
 
 export default function HowItWorksPage() {
   return (
-    <div className="space-y-24 animate-fade-in sm:space-y-36">
-      {/* ===== HERO ===== */}
-      <section className="relative overflow-hidden rounded-clay-lg bg-panel bg-hero-radial px-6 py-16 text-center shadow-clay sm:px-12 sm:py-24">
+    <div className="space-y-20 animate-fade-in sm:space-y-28">
+      {/* HERO */}
+      <section className="relative overflow-hidden rounded-clay-lg bg-panel bg-hero-radial px-6 py-14 text-center shadow-clay sm:px-12 sm:py-20">
         <a
           href="https://bitbadges.io"
           target="_blank"
           rel="noreferrer"
-          className="group inline-flex items-center gap-2.5 rounded-full bg-bg/60 py-2 pl-2.5 pr-4 shadow-clay-sm transition-transform duration-150 hover:-translate-y-0.5"
+          className="group inline-flex items-center gap-2.5 rounded-full bg-bg/60 py-1.5 pl-2 pr-3.5 shadow-clay-sm transition-transform hover:-translate-y-0.5"
         >
-          <span className="inline-flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-bg">
+          <span className="inline-flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-bg">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/chains/bitbadges.png" alt="BitBadges" width={28} height={28} className="h-full w-full object-cover" />
+            <img src="/chains/bitbadges.png" alt="BitBadges" width={24} height={24} className="h-full w-full object-cover" />
           </span>
           <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-dim">
-            Built on{' '}
-            <span className="font-semibold text-gold-bright group-hover:text-gold">BitBadges</span>
+            Built on <span className="font-semibold text-gold-bright">BitBadges</span>
           </span>
         </a>
-        <h1 className="mx-auto mt-6 max-w-4xl font-display text-4xl font-bold leading-[1.02] tracking-marquee sm:text-6xl">
-          A prediction market is <span className="text-gold-gradient">just seven approvals.</span>
+        <h1 className="mx-auto mt-6 max-w-3xl font-display text-4xl font-bold leading-[1.05] tracking-marquee sm:text-6xl">
+          A prediction market is <span className="text-gold-gradient">7 approvals.</span>
         </h1>
-        <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-ink-dim sm:text-lg">
-          Meridian didn't write a settlement contract or a matching engine. It
-          wired together seven rules that the BitBadges chain already knows how to
-          enforce. Here's the whole trick.
+        <p className="mx-auto mt-4 max-w-md text-sm text-ink-dim sm:text-base">
+          No custom code. No middleman. Just rules the chain enforces.
         </p>
       </section>
 
-      {/* ===== 01 · PREDICTION MARKETS (brief) ===== */}
-      <Slide n="01" kicker="Quick primer">
-        <Headline>First, the thing you already get: a prediction market.</Headline>
-        <Lead>
-          You buy <Yes>YES</Yes> or <No>NO</No> on a question with a clear answer —
-          here, “does this stock close at or above this price today?” The price is
-          the market's odds, and the winning side pays exactly $1. That's the whole
-          game. Now for the interesting part.
-        </Lead>
-
-        <Card variant="raised" className="mt-8">
-          <div className="mb-3 flex items-baseline justify-between">
-            <span className="font-mono text-xs uppercase tracking-[0.14em] text-muted">
-              Price is just probability
-            </span>
-            <span className="font-mono text-sm font-semibold text-gold-bright">YES + NO = $1.00</span>
-          </div>
-          <div className="flex h-14 overflow-hidden rounded-clay-sm shadow-clay-sm">
-            <div className="flex flex-[62] items-center justify-center bg-yes/20 font-mono text-sm font-bold text-yes ring-1 ring-inset ring-yes/30">
-              YES · 62¢
+      {/* 01 · PREDICTION MARKET */}
+      <Slide n="01" kicker="Primer" title={<>Price is probability. YES + NO = 1 USDC.</>}>
+        <Card variant="raised">
+          <div className="flex h-16 overflow-hidden rounded-clay-sm shadow-clay-sm">
+            <div className="flex flex-[62] flex-col items-center justify-center bg-yes/20 ring-1 ring-inset ring-yes/30">
+              <span className="font-mono text-lg font-bold text-yes">62¢</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-yes/80">YES</span>
             </div>
-            <div className="flex flex-[38] items-center justify-center bg-no/20 font-mono text-sm font-bold text-no ring-1 ring-inset ring-no/30">
-              NO · 38¢
+            <div className="flex flex-[38] flex-col items-center justify-center bg-no/20 ring-1 ring-inset ring-no/30">
+              <span className="font-mono text-lg font-bold text-no">38¢</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-no/80">NO</span>
             </div>
           </div>
-          <p className="mt-3 text-xs text-faint">A 62¢ YES means the market gives it a 62% chance.</p>
+          <div className="mt-3 flex items-center justify-between text-xs text-faint">
+            <span>62¢ = a 62% chance</span>
+            <span className="font-mono text-gold-bright">winner pays 1 USDC</span>
+          </div>
         </Card>
       </Slide>
 
-      {/* ===== 02 · WHAT IS BITBADGES (the meat) ===== */}
-      <Slide n="02" kicker="The real story">
-        <Headline>So what is BitBadges?</Headline>
-        <Lead>
-          It's a blockchain whose tokens carry their own rulebook. On most chains a
-          token is just a balance, and anything clever — vesting, escrow, payouts —
-          has to be a separate smart contract you write, audit, and pray over. On
-          BitBadges, those rules live <span className="text-ink">inside the token standard</span>.
-          You don't deploy a contract; you configure a token.
-        </Lead>
+      {/* 02 · WHAT IS BITBADGES — building blocks → anything */}
+      <Slide n="02" kicker="The chain" title={<>BitBadges is a native tokenization standard.</>}>
+        <p className="-mt-4 mb-7 max-w-2xl text-sm text-ink-dim">
+          On most chains a token is just a balance. BitBadges builds tokenization
+          into the chain itself — a kit of building blocks you mix and match to create
+          almost anything. A market is just one recipe.
+        </p>
 
-        <div className="mt-10 grid gap-5 lg:grid-cols-3">
-          <Card variant="raised" className="flex flex-col">
-            <IconLego className="h-7 w-7 text-gold-bright" />
-            <span className="mt-5 font-display text-lg font-semibold tracking-marquee text-ink">
-              Rules, not contracts
-            </span>
-            <p className="mt-2 text-sm leading-relaxed text-ink-dim">
-              Minting, escrow, payouts and trading are configuration on the token —
-              not custom code. Nothing to deploy or audit.
-            </p>
-          </Card>
-          <Card variant="raised" className="flex flex-col">
-            <IconShield className="h-7 w-7 text-gold-bright" />
-            <span className="mt-5 font-display text-lg font-semibold tracking-marquee text-ink">
-              The chain is the referee
-            </span>
-            <p className="mt-2 text-sm leading-relaxed text-ink-dim">
-              Every rule is enforced in protocol code. The $1 payout can't be
-              skipped, double-spent, or rugged by an operator.
-            </p>
-          </Card>
-          <Card variant="raised" className="flex flex-col">
-            <IconCode className="h-7 w-7 text-gold-bright" />
-            <span className="mt-5 font-display text-lg font-semibold tracking-marquee text-ink">
-              You keep custody
-            </span>
-            <p className="mt-2 text-sm leading-relaxed text-ink-dim">
-              Tokens and cash sit in your own account the whole time. There's no
-              vault contract holding the bag.
-            </p>
-          </Card>
-        </div>
-      </Slide>
-
-      {/* ===== 03 · APPROVALS / TRANSFERABILITY ===== */}
-      <Slide n="03" kicker="The key idea: approvals">
-        <Headline>Every transfer has to pass a rulebook called an approval.</Headline>
-        <Lead>
-          This is the BitBadges superpower. Tokens don't just move — each move is
-          checked against approvals that answer six questions. Set those rules
-          cleverly and you've described escrow, payouts, or an order book without a
-          single line of contract code.
-        </Lead>
-
-        {/* six dimensions */}
-        <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {DIMENSIONS.map((d, i) => (
-            <div key={d.chip} className="rounded-clay border border-border bg-panel px-4 py-3 shadow-clay-sm">
-              <div className="flex items-center justify-between">
-                <span className="font-display text-base font-semibold tracking-marquee text-ink">{d.q}</span>
-                <span className="font-mono text-[10px] text-faint">{i + 1}/6</span>
+        {/* the block wall */}
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+          {BLOCKS.map((b) => {
+            const Icon = b.icon;
+            return (
+              <div
+                key={b.label}
+                className={`flex items-start gap-2.5 rounded-clay-sm border px-3 py-2.5 shadow-clay-sm ${b.used ? 'border-gold/40 bg-gold/[0.05]' : 'border-border bg-panel'}`}
+              >
+                <span
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-clay-sm ${b.used ? 'bg-gold/15 text-gold-bright ring-1 ring-inset ring-gold/30' : 'bg-bg/50 text-muted'}`}
+                >
+                  <Icon className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <span className="font-display text-[13px] font-semibold leading-tight tracking-marquee text-ink">{b.label}</span>
+                  <span className="mt-0.5 block text-[11px] leading-snug text-ink-dim">{b.desc}</span>
+                </div>
               </div>
-              <p className="mt-1 text-xs text-ink-dim">{d.plain}</p>
-              <span className="mt-2 inline-block">
-                <Code>{d.chip}</Code>
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        {/* three levels */}
-        <div className="mt-8 grid gap-3 sm:grid-cols-3">
-          <LevelCard title="Collection level" body="Rules the market's creator sets for everyone." />
-          <LevelCard title="Sender level" body="What the person sending tokens allows." />
-          <LevelCard title="Recipient level" body="What the person receiving tokens allows." />
+        {/* recipes line */}
+        <div className="mt-5 flex flex-wrap items-center gap-2 text-xs">
+          <span className="font-mono uppercase tracking-[0.14em] text-faint">mix them to build</span>
+          {RECIPES.map((r) => {
+            const Icon = r.icon;
+            const hot = r.label === 'Prediction markets';
+            return (
+              <span
+                key={r.label}
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] ${hot ? 'bg-gold/15 font-semibold text-gold-bright ring-1 ring-inset ring-gold/40' : 'border border-border bg-bg/40 text-ink-dim'}`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {r.label}
+              </span>
+            );
+          })}
         </div>
-        <p className="mt-4 max-w-2xl text-sm text-faint">
-          A transfer only goes through if all three levels agree — and approvals can
-          go further: require proofs, cap amounts, take a royalty, or move cash
-          alongside the tokens (<Code>coinTransfers</Code>). That last one is exactly
-          how dollars flow when you mint or get paid out.
+        <p className="mt-3 text-xs text-faint">
+          A market uses the <span className="text-gold-bright">five highlighted</span> blocks. The rest power everything else.
         </p>
       </Slide>
 
-      {/* ===== 04 · THE SEVEN APPROVALS (payoff) ===== */}
-      <Slide n="04" kicker="Putting it together">
-        <Headline>A Meridian market is seven approvals on one collection.</Headline>
-        <Lead>
-          That's the punchline. Wire up these seven rules and the chain does the
-          rest — minting, trading, refunds, and settling to $1. No bespoke
-          contract anywhere.
-        </Lead>
-
-        <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {APPROVALS.map((a, i) => {
+      {/* 03 · THE SEVEN APPROVALS — cards with primitives */}
+      <Slide n="03" kicker="The recipe" title={<>A market is seven rules, snapped together.</>}>
+        <ol className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+          {APPROVALS.map((a) => {
             const Icon = a.icon;
+            const tone = TONE[a.tone];
             return (
-              <li key={a.name}>
-                <Card variant="flat" className="flex h-full flex-col">
+              <li key={a.n}>
+                <Card variant="flat" className={`flex h-full flex-col border-l-4 ${tone.bl}`}>
                   <div className="flex items-center justify-between">
-                    <span className={`flex h-10 w-10 items-center justify-center rounded-clay-sm bg-bg/50 ring-1 ring-inset ${TONE_RING[a.tone]}`}>
+                    <span className={`flex h-10 w-10 items-center justify-center rounded-clay-sm bg-bg/50 ring-1 ring-inset ${tone.text} ${tone.ring}`}>
                       <Icon className="h-5 w-5" />
                     </span>
-                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-faint">
-                      {a.phase}
-                    </span>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-faint">{a.phase}</span>
                   </div>
-                  <div className="mt-4 flex items-baseline gap-2">
-                    <span className="font-mono text-sm text-faint">{i + 1}</span>
-                    <span className="font-display text-lg font-semibold tracking-marquee text-ink">
-                      {a.name}
-                    </span>
+                  <div className="mt-3 flex items-baseline gap-2">
+                    <span className="font-mono text-xs text-faint">{a.n}</span>
+                    <span className="font-display text-lg font-semibold tracking-marquee text-ink">{a.name}</span>
                   </div>
-                  <p className="mt-2 text-sm leading-relaxed text-ink-dim">{a.body}</p>
+                  <div className="mt-2 space-y-1">
+                    <p className="text-sm leading-snug text-ink-dim">
+                      <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">if </span>
+                      {a.cond}
+                    </p>
+                    <p className="text-sm leading-snug text-ink">
+                      <span className={`font-mono text-[10px] font-semibold uppercase tracking-[0.14em] ${tone.text}`}>then </span>
+                      {a.result}
+                    </p>
+                  </div>
+                  <div className="mt-auto flex flex-wrap gap-1.5 pt-4">
+                    {a.blocks.map((p) => (
+                      <Tag key={p}>{p}</Tag>
+                    ))}
+                  </div>
                 </Card>
               </li>
             );
           })}
-          {/* filler cell with the takeaway, sits in the 8th grid slot */}
           <li>
             <div className="flex h-full flex-col justify-center rounded-clay border-2 border-dashed border-gold/30 bg-gold/[0.04] px-5 py-6 text-center">
               <span className="wordmark-gradient font-hero text-3xl font-extrabold leading-none">7 rules</span>
-              <span className="mt-2 text-sm text-ink-dim">= a full prediction market, settled on-chain.</span>
+              <span className="mt-2 text-sm text-ink-dim">= a full market, settled on-chain.</span>
             </div>
           </li>
         </ol>
-
-        <Card variant="flat" accent="gold" className="mt-8">
-          <p className="text-sm leading-relaxed text-ink-dim">
-            All seven are locked at creation, so the rules can't change mid-market.
-            Settlement is a single signed vote from a trusted price reporter — and in
-            production, the standard can require several reporters to agree before a
-            dollar moves.
-          </p>
-        </Card>
       </Slide>
 
-      {/* ===== CTA ===== */}
-      <section className="flex flex-col items-center gap-5 pb-6 text-center">
-        <h2 className="font-display text-3xl font-bold tracking-marquee text-ink sm:text-4xl">
-          That's the whole trick.
-        </h2>
-        <p className="max-w-md text-base text-ink-dim">
-          Seven rules, one chain, real markets. Go place a prediction.
-        </p>
+      {/* CTA */}
+      <section className="flex flex-col items-center gap-4 pb-4 text-center">
         <Link
           href="/markets"
-          className="rounded-full bg-gold px-8 py-3 text-base font-semibold text-bg shadow-clay transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-0"
+          className="rounded-full bg-gold px-8 py-3 text-base font-semibold text-bg shadow-clay transition-transform hover:-translate-y-0.5 active:translate-y-0"
         >
           Browse markets →
         </Link>
       </section>
-    </div>
-  );
-}
-
-// ---------- small pieces ----------
-
-function LevelCard({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="rounded-clay border border-border border-l-4 border-l-gold/50 bg-panel px-4 py-3 shadow-clay-sm">
-      <span className="font-display text-sm font-semibold tracking-marquee text-ink">{title}</span>
-      <p className="mt-1 text-sm leading-relaxed text-ink-dim">{body}</p>
     </div>
   );
 }
