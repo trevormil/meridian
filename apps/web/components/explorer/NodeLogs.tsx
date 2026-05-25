@@ -78,7 +78,7 @@ export function NodeLogs() {
         <div
           ref={scrollRef}
           onScroll={onScroll}
-          className="h-80 overflow-auto rounded-lg border border-border bg-bg-deep p-3 font-mono text-[11px] leading-relaxed text-ink-dim"
+          className="h-[40rem] overflow-auto rounded-lg border border-border bg-bg-deep p-3 font-mono text-[11px] leading-relaxed text-ink-dim"
         >
           {lines.length === 0 ? (
             <span className="text-faint">…</span>
