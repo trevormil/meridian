@@ -110,6 +110,38 @@ cd deploy && docker compose --env-file .env up -d --build aggregator web
 
 **Update the chain:** rebuild `bitbadgeschaind`, then `sudo systemctl restart bitbadgeschain`. The aggregator's tx-watcher will auto-reconnect to the chain's WS.
 
+**Enable the Explorer node-logs tail (optional):** the `/explorer` tab shows a
+live `journalctl` tail when the host ships the chain's logs to a file the
+aggregator bind-mounts read-only. The aggregator already mounts
+`${CHAIN_LOG_DIR:-/var/log/bitbadges}` → `/host-logs:ro` and reads
+`/host-logs/chain.log`; until the file exists the endpoint returns
+`mounted:false` and the UI shows a graceful empty state. To turn it on:
+
+```bash
+sudo mkdir -p /var/log/bitbadges
+# Ship the chain unit's journal to a file (one-shot service):
+sudo tee /etc/systemd/system/bitbadges-logship.service >/dev/null <<'EOF'
+[Unit]
+Description=Tail bitbadgeschain journal to a file for the Meridian Explorer
+After=bitbadgeschain.service
+[Service]
+ExecStart=/bin/sh -c 'journalctl -f -n 0 -u bitbadgeschain -o cat >> /var/log/bitbadges/chain.log'
+Restart=always
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl enable --now bitbadges-logship
+# Cap growth (logrotate):
+echo '/var/log/bitbadges/chain.log { size 50M rotate 2 missingok copytruncate }' | sudo tee /etc/logrotate.d/bitbadges
+# Recreate the aggregator so the bind-mount picks up the now-present dir:
+cd /opt/bitbadges-pm/deploy && docker compose up -d aggregator
+```
+
+> ⚠️ **The node logs become publicly viewable** at `/explorer` once enabled.
+> This is intentional transparency on a **devnet with no real funds** — the
+> endpoint is tail-only (≤500 lines) and read-only. Do NOT enable this verbatim
+> on a chain holding real value without scrubbing/authenticating it first.
+
 **Backup:** snapshot the droplet weekly. Critical state:
 - `/etc/meridian/fixtures/*.json`  — mnemonics (without these the oracle can't settle)
 - `/root/.bitbadgeschain/data/`     — chain data

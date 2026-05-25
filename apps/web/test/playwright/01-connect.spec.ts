@@ -23,6 +23,8 @@ test('disconnect clears header back to connect button', async ({ page }) => {
   await page.getByTestId('connect-test').click();
   await page.getByTestId('test-persona-e2e-bob').click();
   await expect(page.getByTestId('wallet-connected')).toBeVisible();
+  // Disconnect now lives in the wallet dropdown — open it first.
+  await page.getByTestId('wallet-menu-trigger').click();
   await page.getByTestId('disconnect').click();
   await expect(page.getByTestId('connect-test')).toBeVisible();
 });

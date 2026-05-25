@@ -91,6 +91,11 @@ legal advice.
   in plaintext on-chain. Anyone scanning the chain can identify which
   account is the oracle. This is intentional (verifier transparency)
   but means the oracle account should NOT be reused for anything else.
+- **Public node logs (Explorer).** When the optional node-logs tail is
+  enabled (see `deploy/README.md`), the chain's `journalctl` output is
+  publicly viewable at `/explorer` — tail-only (≤500 lines), read-only.
+  Intentional transparency on a devnet with no real funds; it must be
+  scrubbed or authenticated before use on any chain holding real value.
 
 ## Out of scope
 

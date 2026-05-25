@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useWallet } from '@/contexts/WalletContext';
 import { useRefreshOnTx } from '@/lib/tx-bus';
 import { getMarketBalances } from '@/lib/prediction-market/balances';
+import { LcdLink } from '@/components/ui/LcdLink';
+import { lcdBalanceUrl } from '@/lib/chain/lcdLinks';
 import { env } from '@/lib/env';
 import type { MarketDto } from '@/lib/aggregator';
 import { clsx } from 'clsx';
@@ -53,8 +55,11 @@ export function YourPositionBar({ market }: Props) {
 
   return (
     <div>
-      <div className="mb-2 px-1">
+      <div className="mb-2 flex items-center justify-between px-1">
         <span className="eyebrow">Your holdings</span>
+        <LcdLink href={lcdBalanceUrl(market.collectionId, address)} title="Verify your YES/NO token balance for this market on-chain via the chain LCD">
+          verify on-chain
+        </LcdLink>
       </div>
       <div className="grid grid-cols-3 gap-px overflow-hidden rounded border border-border bg-border">
         <SideCell

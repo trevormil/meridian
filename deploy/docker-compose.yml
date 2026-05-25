@@ -39,11 +39,17 @@ services:
       BLOCK_CHECK_INTERVAL_MS: "10000"
       PRICE_POLL_EVERY_BLOCKS: "30"
       BOOTSTRAP_MAX_COLLECTION_ID: "5000"
+      # Node-log tail for the Explorer tab. The host ships bitbadgeschain's
+      # journalctl to ${CHAIN_LOG_DIR}/chain.log (see deploy/README.md); until
+      # then the file is absent and the /chain/logs endpoint returns mounted:false.
+      CHAIN_LOG_FILE: "/host-logs/chain.log"
     volumes:
       # SQLite + WAL files survive container restarts.
       - aggregator-data:/app/apps/aggregator/data
       # Mnemonic fixtures from k8s/Compose Secret-equivalent (host bind, mode 0400).
       - ${FIXTURES_DIR:-./fixtures}:/app/apps/aggregator/fixtures:ro
+      # Read-only tail of the host node logs for the Explorer tab.
+      - ${CHAIN_LOG_DIR:-/var/log/bitbadges}:/host-logs:ro
     extra_hosts:
       # Lets the container resolve host.docker.internal on Linux Docker too.
       - "host.docker.internal:host-gateway"
