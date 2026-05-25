@@ -18,10 +18,12 @@ import { env } from '../env.js';
 import { getDb } from '../db/index.js';
 import { getCollection } from '../chain/lcd.js';
 import { MAG7, type Ticker } from './constants.js';
-import { fetchPriceQuote } from './prices.js';
+import { fetchPriceQuote, type PriceQuote } from './prices.js';
 import { getOracleSigner, oracleBroadcast } from './signer.js';
-import { ensureMeridianTables, listUnsettledForDate, markSettled, easternTradingDay } from './db.js';
+import { ensureMeridianTables, listUnsettledForDate, markSettled, easternTradingDay, type MeridianRow } from './db.js';
 import { isTradingDay } from './calendar.js';
+import { retryUntil } from './retry.js';
+import { sendAlert } from './alert.js';
 
 /** Read the cached collection JSON for `collectionId` from the aggregator DB. */
 function loadCollectionJson(collectionId: string): any | null {
@@ -133,6 +135,76 @@ async function settleOne(
   return { outcome };
 }
 
+type FetchFn = (ticker: Ticker) => Promise<PriceQuote>;
+/** Resolves a settlement close for `row` (already paired with its ticker's
+ *  close). Returns true once the row is settled, false to leave it outstanding. */
+type SettleFn = (row: MeridianRow, close: number) => Promise<boolean>;
+
+/**
+ * Fetch the settlement close for each ticker. A throw (fetch failure / oracle
+ * guard) or a not-closed session (unless `forceSettle`) leaves the ticker out
+ * of the map, so its markets stay outstanding for the next retry pass.
+ */
+export async function fetchCloses(
+  tickers: Ticker[],
+  forceSettle: boolean,
+  fetchFn: FetchFn = fetchPriceQuote,
+): Promise<Map<Ticker, number>> {
+  const closes = new Map<Ticker, number>();
+  for (const t of tickers) {
+    try {
+      const q = await fetchFn(t);
+      const readings = q.sources.map((s) => `${s.name}=$${s.close.toFixed(2)}`).join(', ');
+      if (!q.isClosed && !forceSettle) {
+        console.warn(
+          `[meridian:evening] ${t}: session not closed across sources — DEFERRING (set MERIDIAN_FORCE_SETTLE=true to override). [${readings}]`,
+        );
+        continue;
+      }
+      closes.set(t, q.close);
+      console.log(
+        `[meridian:evening] ${t} median close $${q.close.toFixed(2)} (closed=${q.isClosed}, divergence=${q.divergence.toFixed(3)}%) [${readings}]`,
+      );
+      if (!q.isClosed) {
+        console.warn(`[meridian:evening] ${t}: settling a NON-closed session because MERIDIAN_FORCE_SETTLE=true`);
+      }
+    } catch (e) {
+      console.error(`[meridian:evening] ${t} price fetch failed:`, (e as Error).message);
+    }
+  }
+  return closes;
+}
+
+/**
+ * Attempt to settle each outstanding row whose ticker has a known close.
+ * Returns the rows STILL unsettled (no close yet, or the settle failed) so the
+ * caller can retry just those.
+ */
+export async function settlePass(
+  outstanding: MeridianRow[],
+  closes: Map<Ticker, number>,
+  settleFn: SettleFn,
+): Promise<MeridianRow[]> {
+  const stillUnsettled: MeridianRow[] = [];
+  for (const row of outstanding) {
+    const close = closes.get(row.ticker as Ticker);
+    if (close == null) {
+      stillUnsettled.push(row);
+      continue;
+    }
+    try {
+      const ok = await settleFn(row, close);
+      if (!ok) stillUnsettled.push(row);
+    } catch (e) {
+      console.error(`[meridian:evening] FAIL ${row.ticker}>$${row.strike}:`, (e as Error).message);
+      stillUnsettled.push(row);
+    }
+    // Stagger broadcasts so the mempool isn't slammed.
+    await new Promise((res) => setTimeout(res, 300));
+  }
+  return stillUnsettled;
+}
+
 async function main(): Promise<void> {
   ensureMeridianTables();
   // Default: settle today's trading day. Override with MERIDIAN_CLOSE_DATE
@@ -160,63 +232,48 @@ async function main(): Promise<void> {
     return;
   }
 
-  // One Yahoo fetch per unique ticker.
-  const tickers = [...new Set(unsettled.map((u) => u.ticker as Ticker))];
-  console.log(`[meridian:evening] settling ${unsettled.length} markets across ${tickers.length} tickers`);
-  const closes = new Map<Ticker, number>();
+  console.log(`[meridian:evening] settling ${unsettled.length} markets across ${new Set(unsettled.map((u) => u.ticker)).size} tickers`);
   const forceSettle = process.env.MERIDIAN_FORCE_SETTLE === 'true';
-  for (const t of tickers) {
-    try {
-      const q = await fetchPriceQuote(t);
-      const readings = q.sources.map((s) => `${s.name}=$${s.close.toFixed(2)}`).join(', ');
-      // Defer settlement when the session isn't closed across all sources —
-      // settling against a mid-session tick would lock in a non-final price.
-      // Deferred tickers leave their rows unsettled, which falls through to the
-      // failed-count → non-zero exit so cron retries catch them.
-      if (!q.isClosed && !forceSettle) {
-        console.warn(
-          `[meridian:evening] ${t}: session not closed across sources — DEFERRING (set MERIDIAN_FORCE_SETTLE=true to override). [${readings}]`,
-        );
-        continue;
-      }
-      closes.set(t, q.close);
-      console.log(
-        `[meridian:evening] ${t} median close $${q.close.toFixed(2)} (closed=${q.isClosed}, divergence=${q.divergence.toFixed(3)}%) [${readings}]`,
-      );
-      if (!q.isClosed) {
-        console.warn(`[meridian:evening] ${t}: settling a NON-closed session because MERIDIAN_FORCE_SETTLE=true`);
-      }
-    } catch (e) {
-      console.error(`[meridian:evening] ${t} price fetch failed:`, (e as Error).message);
-    }
-  }
 
   const signer = await getOracleSigner();
-  let settled = 0;
-  let failed = 0;
-  for (const row of unsettled) {
-    const close = closes.get(row.ticker as Ticker);
-    if (close == null) {
-      failed++;
-      continue;
-    }
-    try {
-      const r = await settleOne(signer, row as any, close);
-      if (r) {
-        markSettled({ collectionId: row.collection_id, outcome: r.outcome, settlementPrice: close });
-        settled++;
-      } else {
-        failed++;
-      }
-    } catch (e) {
-      console.error(`[meridian:evening] FAIL ${row.ticker}>$${row.strike}:`, (e as Error).message);
-      failed++;
-    }
-    await new Promise((res) => setTimeout(res, 300));
-  }
+  const settleFn: SettleFn = async (row, close) => {
+    const r = await settleOne(signer, row as any, close);
+    if (!r) return false;
+    markSettled({ collectionId: row.collection_id, outcome: r.outcome, settlementPrice: close });
+    return true;
+  };
 
-  console.log(`[meridian:evening] done: ${settled} settled, ${failed} failed (of ${unsettled.length})`);
-  if (failed > 0) process.exit(1);
+  // Retry the fetch+settle for any still-unsettled market every
+  // MERIDIAN_SETTLE_RETRY_INTERVAL_MS, up to MERIDIAN_SETTLE_RETRY_WINDOW_MS.
+  // Re-fetching each pass lets a not-yet-posted close / transient divergence
+  // resolve on its own (the official close print typically lands a few minutes
+  // after 4 PM ET). Window <= 0 ⇒ a single pass (kill-switch / tests).
+  const intervalMs = Number(process.env.MERIDIAN_SETTLE_RETRY_INTERVAL_MS ?? 30_000);
+  const windowMs = Number(process.env.MERIDIAN_SETTLE_RETRY_WINDOW_MS ?? 900_000);
+  let outstanding = unsettled;
+  const { remaining, attempts } = await retryUntil(
+    async (attempt) => {
+      const tickers = [...new Set(outstanding.map((o) => o.ticker as Ticker))];
+      const closes = await fetchCloses(tickers, forceSettle, fetchPriceQuote);
+      outstanding = await settlePass(outstanding, closes, settleFn);
+      if (outstanding.length > 0) {
+        console.warn(`[meridian:evening] pass ${attempt}: ${outstanding.length}/${unsettled.length} still unsettled`);
+      }
+      return outstanding;
+    },
+    { intervalMs, windowMs, onAttempt: (a, ms) => console.log(`[meridian:evening] retrying in ${Math.round(intervalMs / 1000)}s (~${Math.round(ms / 1000)}s of window left, after pass ${a})`) },
+  );
+
+  const settled = unsettled.length - remaining.length;
+  console.log(`[meridian:evening] done: ${settled} settled, ${remaining.length} unsettled after ${attempts} pass(es) (of ${unsettled.length})`);
+  if (remaining.length > 0) {
+    const lines = remaining.map((r) => `• ${r.ticker} ≥ $${r.strike} (#${r.collection_id})`).join('\n');
+    await sendAlert(
+      `Meridian settlement needs manual override — ${remaining.length} unsettled (${closeDate})`,
+      `These markets did not settle after ${attempts} pass(es) over the retry window. The oracle was unavailable, sources diverged, or the session never closed. Settle manually (MERIDIAN_FORCE_SETTLE=true) or via the admin override:\n${lines}`,
+    );
+    process.exit(1);
+  }
 }
 
 main().catch((e) => {

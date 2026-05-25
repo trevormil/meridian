@@ -65,6 +65,39 @@ The rest of the stack is purpose-built for this product:
   product. Direct Keplr + MetaMask (no Privy custodial layer). Animated landing,
   static backdrops on data pages so they never compete with prices.
 
+## Operate from the CLI
+
+Every market on Meridian is just BitBadges CLI calls — the same `MsgTransferTokens`
+intents and `MsgCastVote` settles the FE and bots use. Install the `bb` CLI and you
+can run the full create → trade → resolve → redeem lifecycle from a terminal:
+
+```bash
+# Install (bb = bitbadgeschaind)
+curl -fsSL https://install.bitbadges.io | sh
+
+# Create a wallet key to sign with
+bb keys add mywallet
+bb keys list
+
+# Create a market — the prediction-market preset wires up YES/NO + the order book
+bb build prediction-market --verifier bb1resolver…xyz --denom USDC | bb deploy
+
+# Trade YES / NO on a market (id 55)
+bb prediction-markets buy-yes 55 --creator bb1trader…xyz --token-amount 100 --payment-amount 40 --denom USDC | bb deploy
+bb prediction-markets sell-no 55 --creator bb1trader…xyz --token-amount 50 --payment-amount 30 --denom USDC | bb deploy
+
+# Resolve (verifier only), then redeem winnings
+bb prediction-markets resolve 55 --creator bb1resolver…xyz --outcome yes | bb deploy
+bb prediction-markets redeem 55 --creator bb1trader…xyz --state yes-wins | bb deploy
+
+# Browse + inspect anytime
+bb prediction-markets list --open
+bb prediction-markets status 55
+```
+
+You can also drive it from Claude Code via the BitBadges plugin
+(`/plugin marketplace add BitBadges/bitbadges-plugin` then `/plugin install bitbadges`).
+
 ## Repo layout
 
 ```
@@ -151,6 +184,34 @@ chain (systemd) + aggregator + web + caddy (Compose) at NYC1. The 4 PM ET
 cron settles the day's markets autonomously; the 8 AM ET cron creates the
 next day's strikes. Caddy + Let's Encrypt handle TLS for all four subdomains
 (`meridian` · `api` · `lcd` · `rpc`).
+
+### Resilience: retries + failure alerts
+
+The lifecycle scripts retry transient failures in-process and alert on
+exhaustion, so a brief Yahoo/Stooq blip or a late close print doesn't lose a
+day:
+
+- **Evening settle** re-fetches + re-settles any still-unsettled market every
+  `MERIDIAN_SETTLE_RETRY_INTERVAL_MS` (default 30s) up to
+  `MERIDIAN_SETTLE_RETRY_WINDOW_MS` (default 15min). A not-yet-posted close or
+  transient source divergence usually clears within this window and settles
+  automatically; whatever is still unsettled at the end triggers an alert for
+  manual override and a non-zero exit. Set the window to `0` for a single pass.
+- **Morning create** retries the quote fetch with exponential backoff
+  (`MERIDIAN_MORNING_RETRY_ATTEMPTS`, default 4) and alerts if no data is
+  available or if individual market creates fail (those retry idempotently on
+  the next run).
+
+**Alert channel** — set **one** (all optional; absent → alerts log as
+`[ALERT] …` in the cron log):
+
+| Var | Effect |
+|---|---|
+| `MERIDIAN_ALERT_WEBHOOK_URL` | POSTs `{title, body, ts}` JSON. Point it at a Slack/Discord incoming webhook or any endpoint — wire your preferred receiver. |
+| `MERIDIAN_ALERT_TELEGRAM_BOT_TOKEN` + `MERIDIAN_ALERT_TELEGRAM_CHAT_ID` | Sends via the Telegram Bot API instead (takes precedence over the webhook). |
+
+Alerting is best-effort and never crashes a run: a down channel falls back to
+the console.
 
 ## More
 
