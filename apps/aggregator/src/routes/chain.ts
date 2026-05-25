@@ -119,6 +119,28 @@ chain.get('/chain/overview', async (c) => {
 });
 
 /**
+ * Lightweight chain tip — a single RPC /status call, cached. Powers the
+ * always-on header health pulse without the heavier /overview block walk.
+ */
+chain.get('/chain/tip', async (c) => {
+  try {
+    const data = await cached('tip', 2000, async () => {
+      const s = await rpc<any>('/status');
+      const sync = s.result?.sync_info ?? {};
+      const ni = s.result?.node_info ?? {};
+      return {
+        chainId: ni.network ?? null,
+        height: Number(sync.latest_block_height ?? 0),
+        catchingUp: !!sync.catching_up,
+      };
+    });
+    return c.json(data);
+  } catch (e) {
+    return c.json({ error: (e as Error).message }, 502);
+  }
+});
+
+/**
  * Tail of the node's logs. Requires the host to ship `bitbadgeschain`'s
  * journalctl output to CHAIN_LOG_FILE and bind-mount it read-only into this
  * container (see deploy/README.md). Until then, returns mounted:false so the

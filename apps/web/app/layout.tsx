@@ -8,6 +8,7 @@ import { OrderFillWatcher } from '@/components/OrderFillWatcher';
 import { BrandLogo } from '@/components/BrandLogo';
 import { TradingDayBar } from '@/components/TradingDayBar';
 import { NavLink } from '@/components/NavLink';
+import { ChainPulse } from '@/components/ChainPulse';
 import { HeroAtmosphere } from '@/components/HeroAtmosphere';
 import { MobileNav } from '@/components/MobileNav';
 
@@ -105,34 +106,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     min-w-0 lets it shrink so a connected-wallet pill can't
                     bleed off-screen. */}
                 <div className="ml-auto flex min-w-0 items-center gap-2 sm:ml-0 sm:gap-3">
-                  <a
-                    href="https://bitbadges.io"
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    title="Testnet · Powered by BitBadges"
-                    className="hidden shrink-0 items-center gap-2 rounded-full border border-border bg-panel/40 px-3 py-1 transition-colors hover:border-gold/40 hover:bg-gold/5 md:inline-flex"
-                  >
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="h-1 w-1 rounded-full bg-amber" />
-                      <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-amber">
-                        Testnet
-                      </span>
-                    </span>
-                    <span className="h-3 w-px bg-border" />
-                    <span className="inline-flex items-center gap-1.5">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src="/chains/bitbadges.png"
-                        alt=""
-                        width={12}
-                        height={12}
-                        className="h-3 w-3 rounded-full opacity-80"
-                      />
-                      <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-faint">
-                        BitBadges
-                      </span>
-                    </span>
-                  </a>
+                  <ChainPulse />
                   <ConnectButton />
                 </div>
               </div>

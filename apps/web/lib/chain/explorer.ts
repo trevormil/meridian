@@ -32,6 +32,12 @@ export interface ChainOverview {
   blocks: BlockSummary[];
 }
 
+export interface ChainTip {
+  chainId: string | null;
+  height: number;
+  catchingUp: boolean;
+}
+
 export interface ChainLogs {
   mounted: boolean;
   lines: string[];
@@ -45,4 +51,5 @@ async function get<T>(path: string): Promise<T> {
 }
 
 export const getChainOverview = (): Promise<ChainOverview> => get<ChainOverview>('/chain/overview');
+export const getChainTip = (): Promise<ChainTip> => get<ChainTip>('/chain/tip');
 export const getChainLogs = (tail = 200): Promise<ChainLogs> => get<ChainLogs>(`/chain/logs?tail=${tail}`);
