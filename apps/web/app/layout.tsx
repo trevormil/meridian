@@ -8,7 +8,6 @@ import { OrderFillWatcher } from '@/components/OrderFillWatcher';
 import { BrandLogo } from '@/components/BrandLogo';
 import { TradingDayBar } from '@/components/TradingDayBar';
 import { NavLink } from '@/components/NavLink';
-import { MarketStatusPill } from '@/components/MarketStatusPill';
 import { HeroAtmosphere } from '@/components/HeroAtmosphere';
 import { MobileNav } from '@/components/MobileNav';
 
@@ -88,13 +87,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
             <header className="sticky top-0 z-40 border-b border-border bg-bg/90 backdrop-blur-xl">
               <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:gap-6 sm:px-6">
-                {/* Left cluster — brand + ambient status */}
-                <div className="flex items-center gap-4">
+                {/* Left cluster — brand only */}
+                <div className="flex items-center">
                   <BrandLogo />
-                  <span className="hidden h-5 w-px bg-border lg:inline-block" />
-                  <span className="hidden lg:inline-block">
-                    <MarketStatusPill />
-                  </span>
                 </div>
 
                 {/* Center nav — flexes to fill */}
@@ -105,16 +100,38 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <NavLink href="/how-it-works">How it works</NavLink>
                 </nav>
 
-                {/* Right cluster — testnet badge + connect. min-w-0 lets it
-                    shrink so a connected-wallet pill can't bleed off-screen. */}
+                {/* Right cluster — one fused env/attribution tag + connect.
+                    min-w-0 lets it shrink so a connected-wallet pill can't
+                    bleed off-screen. */}
                 <div className="ml-auto flex min-w-0 items-center gap-2 sm:ml-0 sm:gap-3">
-                  <span className="hidden items-center gap-1.5 rounded-full border border-amber/30 bg-amber/5 px-2.5 py-1 md:inline-flex">
-                    <span className="h-1 w-1 rounded-full bg-amber" />
-                    <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-amber">
-                      Testnet
+                  <a
+                    href="https://bitbadges.io"
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    title="Testnet · Powered by BitBadges"
+                    className="hidden shrink-0 items-center gap-2 rounded-full border border-border bg-panel/40 px-3 py-1 transition-colors hover:border-gold/40 hover:bg-gold/5 md:inline-flex"
+                  >
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="h-1 w-1 rounded-full bg-amber" />
+                      <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-amber">
+                        Testnet
+                      </span>
                     </span>
-                  </span>
-                  <span className="hidden h-5 w-px bg-border md:inline-block" />
+                    <span className="h-3 w-px bg-border" />
+                    <span className="inline-flex items-center gap-1.5">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src="/chains/bitbadges.png"
+                        alt=""
+                        width={12}
+                        height={12}
+                        className="h-3 w-3 rounded-full opacity-80"
+                      />
+                      <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-faint">
+                        BitBadges
+                      </span>
+                    </span>
+                  </a>
                   <ConnectButton />
                 </div>
               </div>

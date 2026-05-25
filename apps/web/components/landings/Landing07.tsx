@@ -103,8 +103,9 @@ export function Landing07() {
           <span className="font-mono text-[11px] text-faint transition-transform group-hover:translate-x-0.5">↗</span>
         </a>
 
-        <p className="mt-6 max-w-md px-2 text-sm text-ink-dim sm:text-base">
-          Daily MAG7 binary outcome markets. One trading day, one settle, one $1 USDC payout per winning token.
+        <p className="mt-6 max-w-lg px-2 text-sm text-ink-dim sm:text-base">
+          Daily MAG7 binary outcome markets, built by Trevor&nbsp;Miller on
+          BitBadges, the chain he founded.
         </p>
 
         {/* Lifecycle timeline */}

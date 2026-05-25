@@ -162,8 +162,10 @@ export default function HowItWorksPage() {
             Powered by <span className="font-semibold text-gold-bright">BitBadges</span>
           </span>
         </a>
-        <h1 className="mx-auto mt-6 max-w-3xl font-display text-4xl font-bold leading-[1.05] tracking-marquee sm:text-6xl">
-          Tokenize <span className="text-gold-gradient">anything.</span>
+        <h1 className="mx-auto mt-6 max-w-3xl font-display text-4xl font-bold leading-[1.12] tracking-marquee sm:text-6xl">
+          Tokenize anything.
+          <br />
+          <span className="text-gold-gradient inline-block pb-[0.06em]">No smart contracts.</span>
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-sm text-ink-dim sm:text-base">
           BitBadges is a native on-chain token standard. You mix simple building blocks
