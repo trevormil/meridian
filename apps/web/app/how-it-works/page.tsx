@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { ComponentType, ReactNode } from 'react';
 import { Card } from '@/components/ui/Card';
+import { CliTerminal } from '@/components/CliTerminal';
 
 export const metadata = {
   title: 'How it works · Meridian',
@@ -299,6 +300,19 @@ export default function HowItWorksPage() {
             </div>
           </li>
         </ol>
+      </Slide>
+
+      {/* 04 · BUILD ONE YOURSELF */}
+      <Slide n="04" kicker="Build one" title={<>Run your own market from the terminal.</>}>
+        <p className="-mt-4 mb-7 max-w-2xl text-sm text-ink-dim">
+          Every market on Meridian is just BitBadges CLI calls. Install once, then create,
+          trade, resolve, and redeem a binary market — no smart contracts, no backend.
+        </p>
+        <CliTerminal />
+        <p className="mt-4 text-xs text-faint">
+          Each command prints a transaction you pipe to <span className="text-gold-bright">bb deploy</span>. Replace
+          the sample addresses and market id with your own.
+        </p>
       </Slide>
 
       {/* CTA */}

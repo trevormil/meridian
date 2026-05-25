@@ -6,6 +6,7 @@ import type { MarketDto } from '@/lib/aggregator';
 import { parseMarketName } from '@/lib/market-name';
 import { useCloseCountdown, BrowseCta } from './Shared';
 import { MarketCard } from '@/components/prediction/MarketCard';
+import { CliTerminal } from '@/components/CliTerminal';
 import { clsx } from 'clsx';
 import Link from 'next/link';
 
@@ -148,6 +149,14 @@ export function Landing07() {
 
         <div className="mt-14 flex items-center justify-center">
           <BrowseCta />
+        </div>
+
+        {/* Hero CLI — every market here is just BitBadges CLI calls. */}
+        <div className="mt-14 w-full text-left sm:mt-16">
+          <p className="mb-3 text-center font-mono text-[11px] uppercase tracking-[0.16em] text-faint">
+            …or spin one up from your terminal
+          </p>
+          <CliTerminal />
         </div>
       </section>
 
