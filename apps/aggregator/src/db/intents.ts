@@ -1,6 +1,6 @@
 import { getDb } from './index.js';
 import type { IntentRow } from '../chain/intents.js';
-import { publish, channel } from '../pubsub.js';
+import { publishLazy, channel } from '../pubsub.js';
 import { snapshotIntents, snapshotIntentsOwner } from '../snapshots.js';
 
 export function upsertIntents(rows: IntentRow[]): void {
@@ -47,8 +47,8 @@ export function upsertIntents(rows: IntentRow[]): void {
   // publishing the same collection's snapshot N times in one upsert batch.
   const cids = new Set(rows.map((r) => r.collectionId));
   const owners = new Set(rows.map((r) => r.ownerAddress));
-  for (const cid of cids) publish(channel.intents(cid), snapshotIntents(cid));
-  for (const addr of owners) publish(channel.intentsOwner(addr), snapshotIntentsOwner(addr));
+  for (const cid of cids) publishLazy(channel.intents(cid), () => snapshotIntents(cid));
+  for (const addr of owners) publishLazy(channel.intentsOwner(addr), () => snapshotIntentsOwner(addr));
 }
 
 export interface IntentDbRow {
@@ -123,8 +123,8 @@ export function syncIntentsForOwner(
   // Even when nothing was upserted, a disappearance still changes the visible
   // book — publish so the FE drops the cancelled/filled row from its view.
   if (disappeared.length > 0 && rows.length === 0) {
-    publish(channel.intents(collectionId), snapshotIntents(collectionId));
-    publish(channel.intentsOwner(ownerAddress), snapshotIntentsOwner(ownerAddress));
+    publishLazy(channel.intents(collectionId), () => snapshotIntents(collectionId));
+    publishLazy(channel.intentsOwner(ownerAddress), () => snapshotIntentsOwner(ownerAddress));
   }
   return disappeared;
 }
