@@ -56,24 +56,35 @@ if (process.env.AGGREGATOR_RESET === 'cursor') {
   console.log('[reset] full table wipe — re-indexing from scratch');
 }
 
-// Kick off workers (non-blocking)
-startBootstrapLoop();
-startPricePoller();
-startStatsPoller();
+// Kick off workers (non-blocking). DISABLE_WORKERS is a comma-list diagnostic
+// gate (bootstrap,price,stats,tx,seeder,mm) for bisecting CPU load — empty in
+// normal operation.
+const _disabled = new Set((process.env.DISABLE_WORKERS ?? '').split(',').map((s) => s.trim()).filter(Boolean));
+const enabled = (name: string): boolean => {
+  if (_disabled.has(name)) {
+    console.log(`[init] worker '${name}' DISABLED via DISABLE_WORKERS`);
+    return false;
+  }
+  return true;
+};
+if (enabled('bootstrap')) startBootstrapLoop();
+if (enabled('price')) startPricePoller();
+if (enabled('stats')) startStatsPoller();
 // tx-watcher: backfill-only (HTTP tx_search every 90s). The live Tendermint
 // WS is disabled — it can't handshake from inside the container and cosmjs
 // socket-retries it in a storm that pins the chain CPU.
-startTxWatcher().catch((e) => {
-  console.warn('[tx-watcher] backfill failed to start —', (e as Error).message);
-});
+if (enabled('tx'))
+  startTxWatcher().catch((e) => {
+    console.warn('[tx-watcher] backfill failed to start —', (e as Error).message);
+  });
 // block-watcher NOT started: it's pure NewBlock WS (same storm), and the
 // bootstrap scan + morning script already discover new markets over HTTP.
 
 // SEED_MODE liquidity seeder — opt-in via env. No-op when fixture missing.
-startSeeder();
+if (enabled('seeder')) startSeeder();
 // Market-maker bot — always on. Auto-fills any user order in the 40–60¢ band
 // (mints+sells for buys, buys for sells) so trades execute instantly.
-startMarketMakerBot();
+if (enabled('mm')) startMarketMakerBot();
 
 // Replaced @hono/node-server with Bun.serve so HTTP + WebSocket share the
 // same port. Hono handles all HTTP routes; `Bun.serve.websocket` handles

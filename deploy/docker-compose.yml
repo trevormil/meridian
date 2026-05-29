@@ -32,6 +32,10 @@ services:
       TENDERMINT_WS_URL: "${CHAIN_WS_URL:-ws://host.docker.internal:26657/websocket}"
       PORT: "4001"
       SEED_MODE: "true"
+      # Diagnostic worker gate — comma-list of workers to skip
+      # (bootstrap,price,stats,tx,seeder,mm). Empty in normal operation; lets
+      # ops disable a misbehaving worker without a rebuild. See src/index.ts.
+      DISABLE_WORKERS: "${DISABLE_WORKERS:-}"
       # Low-frequency on purpose: pollPricesOnce (gamm pools) + refreshAllIntents
       # fire per tick across ALL markets; every-block polling pinned the chain
       # at ~290% CPU. Prediction-market prices come from fills (realtime via the
