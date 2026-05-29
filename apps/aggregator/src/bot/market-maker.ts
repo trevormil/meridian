@@ -1,6 +1,6 @@
 import { buildPredictionMarketDepositMsg } from 'bitbadges';
 import { getDb } from '../db/index.js';
-import { listIntentsByCollection } from '../db/intents.js';
+import type { IntentDbRow } from '../db/intents.js';
 import { getBotSigner, botBroadcast } from './signer.js';
 import { searchHistoricalFills } from '../chain/events.js';
 import { recordFill } from '../workers/tx-watcher.js';
@@ -27,9 +27,10 @@ import { snapshotIntentsOwner, snapshotIntents } from '../snapshots.js';
  */
 // The chain→aggregator WS (subscribeNewBlock/Tx) hangs from inside the Docker
 // container (host.docker.internal upgrade fails), so we drive the fill scan
-// with a fast timer instead of a block subscription. 800ms ≈ ~every block at
-// 500ms timeout_commit; reliable and not WS-dependent.
-const SCAN_INTERVAL_MS = 250;
+// with a timer instead of a block subscription. Each scan is now a single
+// indexed query for non-bot orders (see findAllFills) — ~cheap regardless of
+// market count — so a 1s cadence keeps fills snappy without loading the loop.
+const SCAN_INTERVAL_MS = 1_000;
 const BAND_LO = 0.4;
 const BAND_HI = 0.6;
 // Skip absurdly large orders so a single fill can't drain the bot. Demo orders
@@ -54,7 +55,7 @@ function cooldown(c: FillCandidate, reason: string): void {
   console.log(`[mm] cooldown ${fillKey(c).slice(0, 48)}… (${reason})`);
 }
 
-type Intent = ReturnType<typeof listIntentsByCollection>[number];
+type Intent = IntentDbRow;
 
 interface FillCandidate {
   collectionId: string;
@@ -166,18 +167,34 @@ function buildFill(
   };
 }
 
-function findFills(collectionId: string, botAddress: string): FillCandidate[] {
-  const intents = listIntentsByCollection(collectionId, { activeOnly: true });
+function findAllFills(botAddress: string): FillCandidate[] {
+  // ONE indexed query for all active, NON-bot intents across every market.
+  // The seeder owns ~108 intents per market (the visual ladder the bot never
+  // fills), so excluding the bot in SQL turns what used to be a 100-query /
+  // ~10k-row-per-scan sweep into the handful of real user orders — the only
+  // orders this bot ever fills. (This is what was pinning the event loop.)
+  const intents = getDb()
+    .prepare('SELECT * FROM intents WHERE is_active = 1 AND owner_address != ?')
+    .all(botAddress) as Intent[];
+  if (intents.length === 0) return [];
+  // Only fill orders on active markets — closed/resolved markets reject fills.
+  const active = new Set(
+    (
+      getDb().prepare("SELECT collection_id FROM markets WHERE status = 'active'").all() as Array<{
+        collection_id: string;
+      }>
+    ).map((m) => m.collection_id),
+  );
   const out: FillCandidate[] = [];
   for (const i of intents) {
-    if (i.owner_address === botAddress) continue; // never fill our own orders
+    if (!active.has(i.collection_id)) continue;
     const tokenId = tokenIdOf(i);
     if (!tokenId) continue;
     const price = intentPrice(i);
     if (!isFinite(price) || price < BAND_LO || price > BAND_HI) continue;
     const qty = tokenQty(i);
     if (qty <= 0n || qty > MAX_FILL_QTY) continue;
-    out.push({ collectionId, intent: i, tokenId, qty, price, side: isBuy(i) ? 'buy' : 'sell' });
+    out.push({ collectionId: i.collection_id, intent: i, tokenId, qty, price, side: isBuy(i) ? 'buy' : 'sell' });
   }
   return out;
 }
@@ -251,28 +268,21 @@ export function startMarketMakerBot(): () => void {
     try {
       const signer = await getBotSigner();
       if (!signer) return; // bot fixture missing — silently no-op
-      const markets = getDb()
-        .prepare("SELECT collection_id FROM markets WHERE status = 'active'")
-        .all() as Array<{ collection_id: string }>;
+      const fills = findAllFills(signer.address);
+      const fresh = fills.filter((c) => !isCooling(c));
       let filled = 0;
-      let cooling = 0;
-      let found = 0;
-      for (const m of markets) {
-        const fills = findFills(m.collection_id, signer.address);
-        found += fills.length;
-        const fresh = fills.filter((c) => !isCooling(c));
-        cooling += fills.length - fresh.length;
-        for (const c of fresh.slice(0, 5)) {
-          try {
-            await executeFill(signer, c);
-            filled++;
-          } catch (e) {
-            console.warn('[mm] fill step threw:', (e as Error).message);
-            cooldown(c, 'thrown');
-          }
+      for (const c of fresh.slice(0, 10)) {
+        try {
+          await executeFill(signer, c);
+          filled++;
+        } catch (e) {
+          console.warn('[mm] fill step threw:', (e as Error).message);
+          cooldown(c, 'thrown');
         }
       }
-      if (filled > 0) console.log(`[mm] scan: ${found} band orders, ${filled} filled, ${cooling} cooling`);
+      if (filled > 0) {
+        console.log(`[mm] scan: ${fills.length} band orders, ${filled} filled, ${fills.length - fresh.length} cooling`);
+      }
     } finally {
       inFlight = false;
     }
