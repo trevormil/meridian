@@ -26,6 +26,21 @@ export function publish(channel: string, data: unknown): void {
   bus.emit(channel, data);
 }
 
+/**
+ * Publish only when the channel has at least one subscriber, building the
+ * payload lazily via `build()` so we never pay snapshot-serialization cost for
+ * a channel nobody is watching. Safe because `subscribeOne` (ws.ts) sends a
+ * fresh snapshot on subscribe — a late subscriber never misses state.
+ *
+ * Critical for owner channels: the seed bot owns ~12k intents and nothing
+ * subscribes to `intents-owner:{bot}`, so eagerly serializing its whole book on
+ * every intent sync pegged the event loop. With this, that work is skipped.
+ */
+export function publishLazy(channel: string, build: () => unknown): void {
+  if (bus.listenerCount(channel) === 0) return;
+  bus.emit(channel, build());
+}
+
 /** Subscribe to a channel. Returns an unsubscribe fn. */
 export function listen(channel: string, fn: (data: unknown) => void): () => void {
   bus.on(channel, fn);
