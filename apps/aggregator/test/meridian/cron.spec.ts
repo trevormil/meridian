@@ -216,10 +216,12 @@ describe('planMarkets (morning market expansion)', () => {
     expect(specs.map((s) => s.strike)).toEqual(calculateStrikes(680));
   });
 
-  test('low-priced ticker collapses to the deduped strike set (≤7)', () => {
+  test('low-priced ticker keeps 7 strikes via dynamic round step', () => {
+    // With strikeRoundTo dropping to $5 below the $333 crossover, AAPL @ $230
+    // no longer collapses adjacent ±3% offsets onto the same bucket.
     const specs = planMarkets([quote('AAPL', 230, { previousClose: 230 })], '2099-01-15');
     expect(specs.length).toBe(calculateStrikes(230).length);
-    expect(specs.length).toBeLessThan(7);
+    expect(specs.length).toBe(7);
   });
 
   test('multiple tickers expand independently; total = sum of each unique strike set', () => {

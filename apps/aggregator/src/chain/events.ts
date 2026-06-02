@@ -215,22 +215,41 @@ export async function searchHistoricalFills(collectionId: string, limit = 100): 
 }
 
 /**
- * Historical vote scan for a collection. Uses the same Tendermint tx_search
- * with a query that targets the chain's `message.msg_type='cast_vote'`
- * attribute. We then filter to votes on the given collection.
+ * Chain-wide page-walked snapshot of every cast_vote tx, newest first.
+ *
+ * The chain doesn't index a collection-scoped vote attribute
+ * (`cast_vote.collection_id` and `indexer.collection_id` both return 0 hits),
+ * so the only viable query is `message.msg_type='cast_vote'` over the entire
+ * chain. tx_search caps per_page at 100; we paginate up to `maxPages` and
+ * order DESC so the most recent votes land first — critical because the
+ * single-page ASC version silently dropped every vote past index 200 once
+ * total votes exceeded that, breaking status-resolution for any market
+ * settled after the cap.
  */
-export async function searchHistoricalVotes(collectionId: string, limit = 100): Promise<CastVote[]> {
-  // The chain doesn't index `message.collection_id`, so we filter post-fetch.
+export async function searchAllRecentVotes(maxPages = 50, perPage = 100): Promise<CastVote[]> {
   const query = encodeURIComponent(`message.msg_type='cast_vote'`);
-  const r = await fetch(
-    `${env.rpcHttpUrl}/tx_search?query=%22${query}%22&per_page=${limit}&order_by=%22asc%22`,
-  );
-  if (!r.ok) throw new Error(`tx_search ${r.status}`);
-  const data = (await r.json()) as TxSearchResult;
-  const txs = data.result?.txs ?? [];
   const out: CastVote[] = [];
-  for (const t of txs) {
-    out.push(...parseCastVotes(t.tx_result?.events ?? []));
+  for (let page = 1; page <= maxPages; page++) {
+    const r = await fetch(
+      `${env.rpcHttpUrl}/tx_search?query=%22${query}%22&per_page=${perPage}&page=${page}&order_by=%22desc%22`,
+    );
+    if (!r.ok) throw new Error(`tx_search ${r.status} (page ${page})`);
+    const data = (await r.json()) as TxSearchResult;
+    const txs = data.result?.txs ?? [];
+    if (txs.length === 0) break;
+    for (const t of txs) out.push(...parseCastVotes(t.tx_result?.events ?? []));
+    const total = Number(data.result?.total_count ?? 0);
+    if (page * perPage >= total) break;
   }
-  return out.filter((v) => v.collectionId === collectionId);
+  return out;
+}
+
+/**
+ * Single-market historical vote scan. Used by the manual refresh route;
+ * the tx-watcher should use `searchAllRecentVotes` to avoid N redundant
+ * chain-wide fetches.
+ */
+export async function searchHistoricalVotes(collectionId: string, maxPages = 50, perPage = 100): Promise<CastVote[]> {
+  const all = await searchAllRecentVotes(maxPages, perPage);
+  return all.filter((v) => v.collectionId === collectionId);
 }
