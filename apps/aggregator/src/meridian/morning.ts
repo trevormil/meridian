@@ -184,7 +184,20 @@ async function main(): Promise<void> {
   for (const spec of specs) {
     try {
       const before = findMarketByStrike(spec.ticker, spec.strike, spec.closeDate);
-      const id = await createOne(signer, spec);
+      // Wrap chain broadcast in exponential backoff. Without this, a single
+      // dropped chain socket (replay, restart, transient network) makes EVERY
+      // subsequent createOne fail in lockstep — exactly the 45-fail wipeout
+      // that hit 2026-06-02. 4 attempts at 2s/4s/8s/16s buys the chain enough
+      // time to recover its WS connection on a typical hiccup.
+      const id = await withBackoff(() => createOne(signer, spec), {
+        attempts: 4,
+        baseMs: 2_000,
+        maxMs: 16_000,
+        onRetry: (e, attempt, delayMs) =>
+          console.warn(
+            `[meridian:morning] ${marketName(spec)}: attempt ${attempt} failed (${(e as Error).message}); retrying in ${Math.round(delayMs / 1000)}s`,
+          ),
+      });
       if (id && !before) created++;
       else if (id && before) skipped++;
       else failedSpecs.push(spec);

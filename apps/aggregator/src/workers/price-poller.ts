@@ -40,6 +40,13 @@ export async function pollPricesOnce(): Promise<void> {
     if (m.yes_price === null || Math.abs((m.yes_price ?? 0) - yesPrice) > 1e-6) {
       updateMarketPrice(m.collection_id, yesPrice, noPrice);
     }
+
+    // Yield the event loop. recordCandle + updateMarketPrice are 100% sync
+    // (bun:sqlite is sync by design) — without this yield, an 80+ market
+    // sweep that lands on a 1m bucket boundary fires ~960 sync SQL ops +
+    // ~80 WS publishes in one shot, blocking Hono long enough for Caddy to
+    // drop upstream connections with EOF → 502. See deploy/Caddyfile note.
+    await new Promise<void>((resolve) => setImmediate(resolve));
   }
 }
 
