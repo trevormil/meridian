@@ -33,6 +33,23 @@
 # upgrades pass through reverse_proxy automatically over HTTP/1.1.
 {$DOMAIN_API} {
 	encode zstd gzip
+
+	# Emit CORS at the edge so browsers see the REAL upstream error on 5xx
+	# instead of "No 'Access-Control-Allow-Origin' header is present". Without
+	# this, when the aggregator hangs/restarts (chain replay, heartbeat sweep
+	# starvation, etc.) Caddy generates the 502 itself — the upstream's own
+	# `hono/cors` never fires — and the browser blames CORS for what is really
+	# an upstream availability failure. Caddy's `header` directive replaces
+	# (not appends) so this is also safe when the upstream is healthy and sets
+	# the same headers: no duplicate-value CORS rejection.
+	header {
+		Access-Control-Allow-Origin "*"
+		Access-Control-Allow-Methods "GET, POST, OPTIONS"
+		Access-Control-Allow-Headers "Content-Type, Accept, Authorization"
+	}
+	@cors_preflight method OPTIONS
+	respond @cors_preflight 204
+
 	reverse_proxy {
 		dynamic a {
 			name aggregator
