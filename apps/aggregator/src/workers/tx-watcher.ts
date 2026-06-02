@@ -11,7 +11,7 @@ import {
   parseCastVotes,
   impliedYesPrice,
   searchHistoricalFills,
-  searchHistoricalVotes,
+  searchAllRecentVotes,
   type UsedApprovalDetails,
 } from '../chain/events.js';
 import { recordVote } from '../db/votes.js';
@@ -311,8 +311,8 @@ async function refreshIntentsFor(addresses: Set<string>): Promise<void> {
 async function backfillHistoricalFills(): Promise<void> {
   const markets = getDb().prepare('SELECT collection_id FROM markets').all() as Array<{ collection_id: string }>;
   if (!markets.length) return;
+  const known = new Set(markets.map((m) => m.collection_id));
   let fillTotal = 0;
-  let voteTotal = 0;
   for (const m of markets) {
     try {
       const fills = await searchHistoricalFills(m.collection_id, 200);
@@ -327,14 +327,31 @@ async function backfillHistoricalFills(): Promise<void> {
     } catch (e) {
       console.warn(`[tx-watcher] fill backfill failed for #${m.collection_id}:`, (e as Error).message);
     }
-    try {
-      const votes = await searchHistoricalVotes(m.collection_id, 200);
-      for (const v of votes) recordVote(v);
-      if (votes.length > 0) refreshMarketStatusFromVotes(m.collection_id);
-      voteTotal += votes.length;
-    } catch (e) {
-      console.warn(`[tx-watcher] vote backfill failed for #${m.collection_id}:`, (e as Error).message);
-    }
   }
-  console.log(`[tx-watcher] backfill: ${fillTotal} fills, ${voteTotal} votes across ${markets.length} markets`);
+
+  // ONE chain-wide paginated vote fetch covers every market. The prior
+  // design called searchHistoricalVotes(cid, 200) once per market, which
+  // (a) re-fetched the same chain-wide vote set ~N× per sweep and (b) capped
+  // at 200 ascending, silently dropping every vote past that index — leaving
+  // any market settled after the cap permanently stuck at status=active in
+  // the FE. searchAllRecentVotes paginates DESC so even an overflow misses
+  // only the oldest votes (already long-resolved in our local mirror).
+  let voteTotal = 0;
+  let touchedCount = 0;
+  try {
+    const allVotes = await searchAllRecentVotes(50, 100);
+    const touched = new Set<string>();
+    for (const v of allVotes) {
+      if (!known.has(v.collectionId)) continue;
+      recordVote(v);
+      touched.add(v.collectionId);
+    }
+    for (const cid of touched) refreshMarketStatusFromVotes(cid);
+    voteTotal = allVotes.length;
+    touchedCount = touched.size;
+  } catch (e) {
+    console.warn('[tx-watcher] vote backfill failed:', (e as Error).message);
+  }
+
+  console.log(`[tx-watcher] backfill: ${fillTotal} fills across ${markets.length} markets, ${voteTotal} votes across ${touchedCount} markets`);
 }
