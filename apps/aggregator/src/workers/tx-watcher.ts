@@ -16,6 +16,7 @@ import {
 } from '../chain/events.js';
 import { recordVote } from '../db/votes.js';
 import { refreshMarketStatusFromVotes } from './status-updater.js';
+import { refreshOneStat } from './stats-poller.js';
 import { publish, channel } from '../pubsub.js';
 import { snapshotFills } from '../snapshots.js';
 
@@ -254,6 +255,13 @@ export function recordFill(f: UsedApprovalDetails): void {
   console.log(
     `[tx-watcher] fill #${f.collectionId} ${side.toUpperCase()} ${tokenAmount} → YES=${price.toFixed(4)} (${f.from.slice(0, 10)}…→${f.to.slice(0, 10)}…)`,
   );
+
+  // Event-driven escrow refresh — buys flow through `buildPredictionMarketDepositMsg`
+  // (see bot/market-maker.ts) which grows the mint escrow before the fill leg.
+  // Without this hook, total_deposited would lag up to `statsPollIntervalMs`
+  // (60s by default) after a trade. Fire-and-forget; the steady-state sweep
+  // is the safety net.
+  void refreshOneStat(f.collectionId).catch(() => { /* transient — sweep will catch */ });
 }
 
 function isKnownMarket(collectionId: string): boolean {
@@ -285,7 +293,12 @@ function extractAddresses(events: any[]): Set<string> {
 }
 
 async function refreshIntentsFor(addresses: Set<string>): Promise<void> {
-  const markets = getDb().prepare('SELECT collection_id FROM markets').all() as Array<{ collection_id: string }>;
+  // Only walk ACTIVE markets — resolved markets can't accept new intents and
+  // any existing rows have been reaped (status-updater + db/index one-time).
+  // Was: SELECT collection_id FROM markets (all 316+ markets per address).
+  const markets = getDb()
+    .prepare("SELECT collection_id FROM markets WHERE status = 'active'")
+    .all() as Array<{ collection_id: string }>;
   if (!markets.length) return;
   for (const addr of addresses) {
     for (const m of markets) {
@@ -309,11 +322,37 @@ async function refreshIntentsFor(addresses: Set<string>): Promise<void> {
  * so re-running just refreshes the same candle.
  */
 async function backfillHistoricalFills(): Promise<void> {
-  const markets = getDb().prepare('SELECT collection_id FROM markets').all() as Array<{ collection_id: string }>;
-  if (!markets.length) return;
-  const known = new Set(markets.map((m) => m.collection_id));
+  // Backfill targets:
+  //   - ALL active markets (every sweep — they accumulate new fills)
+  //   - resolved markets that have NEVER been backfilled (one-shot, then
+  //     mark `fills_backfilled_at` so we never re-poll them)
+  //
+  // This drops the per-sweep tx_search load from ~316 calls to ~6 in steady
+  // state. The one-shot path covers the fresh-DB / first-boot case where a
+  // resolved market is newly indexed and we still need its fill history.
+  //
+  // The chain-wide vote pull below is one paginated call regardless — it
+  // gives us votes for ALL markets in a single shot, so we keep the full
+  // known-set there for vote ingestion.
+  const allMarkets = getDb()
+    .prepare('SELECT collection_id FROM markets')
+    .all() as Array<{ collection_id: string }>;
+  const known = new Set(allMarkets.map((m) => m.collection_id));
+
+  const fillTargets = getDb()
+    .prepare(
+      `SELECT collection_id FROM markets
+       WHERE status = 'active'
+          OR (status LIKE 'resolved-%' AND fills_backfilled_at IS NULL)`,
+    )
+    .all() as Array<{ collection_id: string }>;
+
+  const markBackfilledStmt = getDb().prepare(
+    'UPDATE markets SET fills_backfilled_at = ? WHERE collection_id = ?',
+  );
+  const now = Date.now();
   let fillTotal = 0;
-  for (const m of markets) {
+  for (const m of fillTargets) {
     try {
       const fills = await searchHistoricalFills(m.collection_id, 200);
       for (const f of fills) {
@@ -324,6 +363,7 @@ async function backfillHistoricalFills(): Promise<void> {
         recordFill(f);
       }
       fillTotal += fills.length;
+      markBackfilledStmt.run(now, m.collection_id);
     } catch (e) {
       console.warn(`[tx-watcher] fill backfill failed for #${m.collection_id}:`, (e as Error).message);
     }
@@ -353,5 +393,7 @@ async function backfillHistoricalFills(): Promise<void> {
     console.warn('[tx-watcher] vote backfill failed:', (e as Error).message);
   }
 
-  console.log(`[tx-watcher] backfill: ${fillTotal} fills across ${markets.length} markets, ${voteTotal} votes across ${touchedCount} markets`);
+  console.log(
+    `[tx-watcher] backfill: ${fillTotal} fills across ${fillTargets.length}/${allMarkets.length} markets, ${voteTotal} votes across ${touchedCount} markets`,
+  );
 }

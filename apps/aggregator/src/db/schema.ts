@@ -139,4 +139,8 @@ export function migrate(db: Database): void {
     }
   };
   addCol('markets', 'mint_escrow_address', 'TEXT');
+  // Per-market gate so the tx-watcher backfill skips resolved markets it has
+  // already fully indexed. NULL = never backfilled (always run); INTEGER =
+  // wall-clock ms of last successful backfill. Active markets re-run regardless.
+  addCol('markets', 'fills_backfilled_at', 'INTEGER');
 }

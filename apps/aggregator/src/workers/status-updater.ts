@@ -54,10 +54,21 @@ export function refreshMarketStatusFromVotes(collectionId: string): void {
 
   const newStatus = deriveStatus(reached);
   if (newStatus === 'active' || newStatus === 'unknown') return; // nothing to flip
+  const now = Date.now();
+  // Stamp resolution_date on the flip — column has always existed in the
+  // schema + been exposed in snapshots/predictions routes, but nothing wrote
+  // to it. The gc-worker keys its retention window off this timestamp.
   getDb()
-    .prepare('UPDATE markets SET status = ?, last_synced = ? WHERE collection_id = ?')
-    .run(newStatus, Date.now(), collectionId);
-  console.log(`[status] #${collectionId} → ${newStatus}`);
+    .prepare('UPDATE markets SET status = ?, last_synced = ?, resolution_date = ? WHERE collection_id = ?')
+    .run(newStatus, now, now, collectionId);
+  // Reap every intent on this market in the SAME write — the chain refuses
+  // new fills on a resolved market, so any `used=0` intent here is dead
+  // weight and would cost an LCD call on every intent-watcher sweep.
+  const reaped = getDb()
+    .prepare('UPDATE intents SET used = 1, is_active = 0 WHERE collection_id = ? AND used = 0')
+    .run(collectionId);
+  const reapedMsg = reaped.changes > 0 ? ` (reaped ${reaped.changes} intents)` : '';
+  console.log(`[status] #${collectionId} → ${newStatus}${reapedMsg}`);
   publish(channel.market(collectionId), snapshotMarket(collectionId));
 }
 

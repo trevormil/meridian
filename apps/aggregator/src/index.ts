@@ -14,6 +14,7 @@ import { startStatsPoller } from './workers/stats-poller.js';
 import { startTxWatcher } from './workers/tx-watcher.js';
 import { startSeeder } from './bot/seeder.js';
 import { startMarketMakerBot } from './bot/market-maker.js';
+import { startGcWorker } from './workers/gc-worker.js';
 import { handleOpen, handleClose, handleMessage } from './ws.js';
 
 const app = new Hono();
@@ -85,6 +86,10 @@ if (enabled('seeder')) startSeeder();
 // Market-maker bot — always on. Auto-fills any user order in the 40–60¢ band
 // (mints+sells for buys, buys for sells) so trades execute instantly.
 if (enabled('mm')) startMarketMakerBot();
+// gc-worker — cascade-deletes resolved markets older than retention window
+// (default 3 days). MERIDIAN_RESOLVED_RETENTION_DAYS=0 disables. Cheap once
+// per day; cheap forever once the steady-state catches up.
+if (enabled('gc')) startGcWorker();
 
 // Replaced @hono/node-server with Bun.serve so HTTP + WebSocket share the
 // same port. Hono handles all HTTP routes; `Bun.serve.websocket` handles
