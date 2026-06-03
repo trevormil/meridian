@@ -26,6 +26,22 @@ export function getDb(): Database {
   if (m.n === 0) {
     _db.exec("DELETE FROM sync_state WHERE key = 'bootstrap.last_scanned_id'");
   }
+  // One-time reap: intents on resolved markets can never accept fills again
+  // (the chain rejects them post-resolution), so any row still `used=0` here
+  // is dead weight. Pre-fix deploys accumulated ~22k of these from the seed
+  // bot's ladder — every one was costing an LCD call per intent-watcher sweep.
+  // After this runs, the same SQL filter applies going forward in
+  // status-updater (see refreshMarketStatusFromVotes → reapResolvedIntents).
+  const reaped = _db
+    .query(
+      `UPDATE intents SET used = 1, is_active = 0
+       WHERE used = 0
+         AND collection_id IN (SELECT collection_id FROM markets WHERE status LIKE 'resolved-%')`,
+    )
+    .run();
+  if (reaped.changes > 0) {
+    console.log(`[db] reaped ${reaped.changes} stale intents on resolved markets`);
+  }
   return _db;
 }
 

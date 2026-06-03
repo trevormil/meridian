@@ -23,8 +23,17 @@ import { syncIntentsForOwner } from '../db/intents.js';
  * (Eagerly serializing the bot book on every sync is what pegged the loop.)
  */
 export async function refreshAllIntents(): Promise<{ checked: number; reaped: number }> {
+  // JOIN markets and filter to active. Resolved markets can never accept new
+  // fills (chain rejects), so any `used=0` intent against one is dead weight.
+  // status-updater reaps intents on the flip; db/index does a one-time
+  // backfill for existing data; this filter is the steady-state guard.
   const pairs = getDb()
-    .prepare('SELECT DISTINCT owner_address, collection_id FROM intents WHERE used = 0')
+    .prepare(
+      `SELECT DISTINCT i.owner_address, i.collection_id
+       FROM intents i
+       JOIN markets m ON m.collection_id = i.collection_id
+       WHERE i.used = 0 AND m.status = 'active'`,
+    )
     .all() as Array<{ owner_address: string; collection_id: string }>;
 
   let reaped = 0;
